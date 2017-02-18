@@ -141,7 +141,7 @@
           printf ("converged to minimum at\n");
         }
      
-        printf ("%5zd",iter);
+        printf ("%5zu",iter);
         for (i=0;i<Nparam;i++) {
           printf("%11.5f ",gsl_vector_get(s->x,i));
         }
