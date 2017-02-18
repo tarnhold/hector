@@ -52,6 +52,9 @@
         bool                   estimate_multivariate;
         DesignMatrix(void);
         ~DesignMatrix(void);
+
+        DesignMatrix(const DesignMatrix &) = delete;
+        DesignMatrix& operator=(const DesignMatrix &) = delete;
  
         void compute_Amp(double Ac, double As,
                           double sigma_in, double& Amp, double& sigma_out);

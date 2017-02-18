@@ -48,6 +48,9 @@
       public:
         Minimizer(void);
         ~Minimizer(void);
+        Minimizer(const Minimizer &) = delete;
+        Minimizer& operator=(const Minimizer &) = delete;
+
         int   get_Nparam(void) {return Nparam;};
         void  get_param(double *param_);
         void  solve(void);

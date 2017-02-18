@@ -36,6 +36,9 @@
         Likelihood(void);
         ~Likelihood(void);
 
+        Likelihood(const Likelihood &) = delete;
+        Likelihood& operator=(const Likelihood &) = delete;
+
       public:
         //--- Meyers singleton
         static Likelihood& getInstance(void) {
