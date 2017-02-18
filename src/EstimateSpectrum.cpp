@@ -174,7 +174,6 @@
     int             i,j,L,K,n,k,skipped_segments;
     double          Variance_xt,Variance_Gf,U,scale,fraction;
     double          *t,*y,*dummy,dt,freq[2],percentage_gaps;
-    fstream         fp;
     string          name;
     fftw_plan       plan_forward;
     fftw_complex    *Y=NULL;

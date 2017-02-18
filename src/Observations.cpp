@@ -364,7 +364,6 @@
   {
     using namespace std;
     fstream   fp;
-    string    fn(filename);
     double    fraction,MJD;
     int       MSL,flag,year,missing;
     char      line[80];
