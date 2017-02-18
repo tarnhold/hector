@@ -92,6 +92,9 @@ install:
 uninstall :
 	@rm -f $(addprefix $(BIN_DIR)/,$(programs))
 
+cppcheck:
+	cppcheck --enable=all -DTIME -DDEBUG $(INC_DIR) . 2>&1
+
 
 #---- programs 
 
