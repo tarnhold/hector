@@ -54,7 +54,7 @@ else ifeq "$(DISTRIB)" "Arch"
   CPP = g++
   $(info ./src/Makefile: Arch Linux)
   PREFIX=/usr
-  CPPFLAGS= -O3 -fopenmp -Wall -Wextra
+  CPPFLAGS= -O3 -fopenmp -Wall -Wextra -std=c++11
   INC_DIR = -I./ -I/usr/include/atlas
   LIB_DIR = -L/usr/lib
   ATLAS   = -llapack -latlas -lcblas
