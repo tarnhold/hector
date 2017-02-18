@@ -18,8 +18,7 @@
     class RemoveOutliers
     {
       private:
-        int      SegmentLength;
-        double   factor,StudentT;
+        double   factor;
        
       public:
         RemoveOutliers(void);
