@@ -37,7 +37,9 @@
 
 
 //---!!--------------------------------------------------
-  Powerlaw::Powerlaw(double d_fixed_) : pi(4.0*atan(1.0))
+  Powerlaw::Powerlaw(double d_fixed_)
+    : pi(4.0*atan(1.0))
+    , param_PSD{0.0, 0.0}
 //---!!--------------------------------------------------
   {
     Control  &control=Control::getInstance();

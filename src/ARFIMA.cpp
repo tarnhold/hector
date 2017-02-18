@@ -44,6 +44,7 @@
  */
 //---!!--------------------------
   ARFIMA::ARFIMA(double d_fixed_)
+    : d_PSD(0.0)
 //---!!--------------------------
   {
     Control   &control = Control::getInstance();
