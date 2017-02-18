@@ -560,7 +560,7 @@
     string        component_name,offset_filename;
     char          line[80];
     int           component;
-    double        MJD,obs[3],MJD_old;
+    double        MJD,obs[3],MJD_old = 0.0;
     Control       &control = Control::getInstance();
 
     //--- Which component needs to be analysed?
@@ -643,7 +643,7 @@
     char          line[120];
     string        component_name;
     int           decimal,remainder,component,i;
-    double        MJD,obs[3],MJD_old,yearfraction,dt;
+    double        MJD,obs[3],MJD_old = 0.0,yearfraction,dt;
     Control       &control = Control::getInstance();
 
     //--- Which component needs to be analysed?

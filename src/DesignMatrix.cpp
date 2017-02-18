@@ -588,7 +588,7 @@ DesignMatrix* DesignMatrix::singleton = NULL;
     using namespace std;
     const double   rad=tpi/360.0;
     int            i,j,k,year,month,day,hour,minute;
-    double         ds = 365.25,second,corr_pos,corr_vel,Amp,sigma_out;
+    double         ds = 365.25,second,corr_pos = 0.0,corr_vel = 0.0,Amp,sigma_out;
     double         *xhat,*theta_dummy;
     fstream        fp;
     Calendar       calendar;
