@@ -240,14 +240,13 @@
 //---------------------------------------------------------------------
   {
     int           i,k;
-    double        fraction,T;
+    double        fraction;
     Observations  &observations=Observations::getInstance();
 
     using namespace std;
     cout << endl;
 
     //--- Get some information on sigma_eta and sampling period
-    T = 1.0/(365.25*24.0*3600.0*observations.get_fs()); // T in yr
     k = Nmodels-1;
     for (i=0;i<Nmodels;i++) {
       
