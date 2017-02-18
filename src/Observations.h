@@ -90,7 +90,7 @@
         void   get_ssetanh(std::vector<TanhEntry>& ssetanh_);
         void   get_t0t1(double& t0, double& t1);
         void   add_offset(double MJD);
-        void   change_offset(int column, double MJD);
+        void   change_offset(size_t column, double MJD);
     };
 
   #endif
