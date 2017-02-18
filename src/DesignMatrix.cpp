@@ -375,7 +375,7 @@ DesignMatrix* DesignMatrix::singleton = NULL;
       for (l=0;l<n_postseismiclog;l++) {
         MJD = postseismiclog[l].MJD;
         T   = postseismiclog[l].T;
-        if (t[i]+TINY>MJD) H[i + (j+l)*m] = log(1.0 + (t[i]-MJD)/T);
+        if (t[i]+TINY>MJD) H[i + (j+l)*m] = log1p((t[i]-MJD)/T);
       }
       j += n_postseismiclog;
       for (l=0;l<n_postseismicexp;l++) {
