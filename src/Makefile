@@ -105,14 +105,14 @@ estimatetrend : EstimateTrend.cpp Control.o Minimizer.o \
 	$(noisemodel_objects) $(likelihood_objects) Observations.o \
 	DesignMatrix.o HyperGeo.o Calendar.o  \
 	 -DVERSION=$(VERSION) \
-	$(INC_DIR) $(LIB_DIR) $(ATLAS) -lfftw3 -lgsl $(ATLAS) \
+	$(INC_DIR) $(LIB_DIR) $(ATLAS) -lfftw3 -lgsl \
 	-o estimatetrend
 
 removeoutliers : RemoveOutliers.cpp RemoveOutliers.h \
 	Observations.o DesignMatrix.o Control.o Calendar.o
 	$(CPP) $(CPPFLAGS) RemoveOutliers.cpp Observations.o DesignMatrix.o \
 	Control.o Calendar.o -DVERSION=$(VERSION) \
-	$(INC_DIR) $(LIB_DIR) $(ATLAS) -lgsl $(ATLAS) \
+	$(INC_DIR) $(LIB_DIR) $(ATLAS) -lgsl \
 	-o removeoutliers
 
 modelspectrum : ModelSpectrum.cpp ModelSpectrum.h \
@@ -121,7 +121,7 @@ modelspectrum : ModelSpectrum.cpp ModelSpectrum.h \
 	$(CPP) $(CPPFLAGS) ModelSpectrum.cpp $(noisemodel_objects) \
 	$(likelihood_objects) DesignMatrix.o \
         Control.o Observations.o HyperGeo.o Calendar.o -DVERSION=$(VERSION) \
-	$(INC_DIR) $(LIB_DIR) $(ATLAS) -lfftw3 -lgsl $(ATLAS) \
+	$(INC_DIR) $(LIB_DIR) $(ATLAS) -lfftw3 -lgsl \
         -o modelspectrum
 
 estimatespectrum : EstimateSpectrum.cpp Observations.o Control.o \
