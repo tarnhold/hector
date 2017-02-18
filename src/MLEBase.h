@@ -38,6 +38,7 @@
       public:
         MLEBase(void);
         virtual ~MLEBase(void);
+        MLEBase(const MLEBase &) = delete;
         virtual void  prepare_covariance(double *param)=0;
         virtual void  compute_LeastSquares(double *param)=0;
         void          show_matrix(const char name[], double *A, int m, int n);

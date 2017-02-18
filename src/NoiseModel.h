@@ -37,6 +37,7 @@
 
         NoiseModel(void);
         ~NoiseModel(void);
+        NoiseModel(const NoiseModel &) = delete;
         double  compute_fraction(int i, double *param);
 
       public:
