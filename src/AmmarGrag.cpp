@@ -51,7 +51,7 @@
     //    to have zero entries on the rows when there is a gap.
     if (Ngaps>0) {
       for (i=0;i<m;i++) {
-        if (isnan(x[i])) {
+        if (std::isnan(x[i])) {
           x[i] = 0.0;
           cblas_dscal(n,0.0,&H[i],m);
         }

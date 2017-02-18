@@ -270,7 +270,7 @@
 
     Variance_xt = 0.0; // Total variance, page 167, SAaFT
     for (j=0,i=0;i<N;i++) {
-      if (!isnan(y[i])) { // Skip NaN's
+      if (!std::isnan(y[i])) { // Skip NaN's
         Variance_xt += y[i]*y[i];
         j++;
       }
@@ -287,7 +287,7 @@
 
       //--- Fill dummy array to process next segment
       for (k=0,i=0;i<L;i++) {
-        if (isnan(y[j*L/2+i])) {
+        if (std::isnan(y[j*L/2+i])) {
           dummy[i] = 0.0;
           k++;
         } else {

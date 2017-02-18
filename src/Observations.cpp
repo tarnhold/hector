@@ -130,7 +130,7 @@
     //--- Count gaps    
     Ngaps=0;
     for (i=0;i<x.size();i++) {
-      if (isnan(x[i])) Ngaps++;
+      if (std::isnan(x[i])) Ngaps++;
     }
 
     //--- Give summary of read data
@@ -188,7 +188,7 @@
         }
       } else if (strncmp("# sampling period",line,17)==0) {
         if (sscanf(&line[17],"%lf",&T)==1) {
-          if (!isnan(fs)) {
+          if (!std::isnan(fs)) {
             if (fabs(fs*24.0*3600.0 - T)>0.001) {
               cerr << "Weird, fs was set but different to header info" << endl
                    << "T=" << T << ",  fs=" << fs << endl;
@@ -260,7 +260,7 @@
         //    look for the control file to know which component we need.
         cout << "MJD=" << MJD << ", " << comp[0] << ", " << comp[1] 
 						<< ", " << comp[2] << endl;
-        if (isnan(comp[component])==true) {
+        if (std::isnan(comp[component])) {
           offsets.push_back(MJD);
         }
       } else if (strlen(line)>0) {
@@ -296,7 +296,7 @@
       if (offsets[i]>t[0] && offsets[i]<t[m-1]) {
         //--- find index
         j=0;
-        while (t[j]<offsets[i] || (t[j]>offsets[i]-TINY && isnan(x[j]))) j++;
+        while (t[j]<offsets[i] || (t[j]>offsets[i]-TINY && std::isnan(x[j]))) j++;
         //cout << "i=" << i << ", index=" << j << " t[j]=" << t[j] <<  endl;
         index_already_used = false;
         for (k=0;k<index.size();k++) {
@@ -453,7 +453,7 @@
         cout << "Found x & xhat: " << obs << ", " << mod << endl;
 #endif
         t.push_back(MJD);
-        if (isnan(obs) || isnan(mod)) {
+        if (std::isnan(obs) || std::isnan(mod)) {
           cerr << "Found a NaN! : obs=" << obs << ", mod=" << mod << endl;
           exit(EXIT_FAILURE);
         } else {
@@ -463,7 +463,7 @@
 #ifdef DEBUG
         cout << "Found x " << obs << endl;
 #endif
-        if (!isnan(obs)) {
+        if (!std::isnan(obs)) {
           t.push_back(MJD);
           x.push_back(scale_factor*obs);
         }
@@ -479,7 +479,7 @@
     
 
     //--- Determine sampling period
-    if (isnan(fs)) determine_fs();
+    if (std::isnan(fs)) determine_fs();
   }
 
 
@@ -599,7 +599,7 @@
     fp.close();
 
     //--- Determine sampling period
-    if (isnan(fs)) determine_fs();
+    if (std::isnan(fs)) determine_fs();
   }
 
 
@@ -703,7 +703,7 @@
     fp.close();
 
     //--- Determine sampling period
-    if (isnan(fs)) {
+    if (std::isnan(fs)) {
       cerr << "Could not determine sampling period!" << endl;
       exit(EXIT_FAILURE);
     } 
@@ -746,7 +746,7 @@
       if (xhat.size()==0) { 
         fp << fixed << t[i] << "  " << x[i] << endl;
       } else {
-        if (!isnan(x[i])) {
+        if (!std::isnan(x[i])) {
           fp << fixed << t[i] << "  " << x[i] << "  " << xhat[i] << endl;
         }
       }
@@ -889,7 +889,7 @@
     x_new.clear();
 
     for (i=0;i<t.size();i++) {
-      if (!isnan(x[i])) {
+      if (!std::isnan(x[i])) {
         t_new.push_back(t[i]);
         x_new.push_back(x[i]);
       }
@@ -908,7 +908,7 @@
     //--- Count gaps    
     Ngaps=0;
     for (i=0;i<x.size();i++) {
-      if (isnan(x[i])) Ngaps++;
+      if (std::isnan(x[i])) Ngaps++;
     }
   }
 

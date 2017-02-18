@@ -49,7 +49,7 @@
     //--- See if we need to set d to zero, creating an ARMA model. In theory
     //    we can set d to any value between -0.5 and 0.5 but only 0 makes
     //    practical sense.
-    if (isnan(d_fixed_)==false) {
+    if (!std::isnan(d_fixed_)) {
       estimate_spectral_index = false;
       d_fixed = d_fixed_;
       Nparam  = p+q; // include 'd' in the counting of parameters

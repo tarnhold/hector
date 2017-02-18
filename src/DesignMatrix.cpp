@@ -385,7 +385,7 @@ DesignMatrix* DesignMatrix::singleton = NULL;
       }
       j += n_postseismicexp;
       if (estimate_multivariate==true) {
-        if (!isnan(x[i])) {
+        if (!std::isnan(x[i])) {
           row = multivariate[i_gap];
           if (fabs(t[i]-row[0])>TINY) {
             cerr << "on row " << i_gap << " time stamp is different" << endl;
@@ -410,7 +410,7 @@ DesignMatrix* DesignMatrix::singleton = NULL;
       //--- Put the ones in the right places
       j=0;
       for (i=0;i<m;i++) {
-        if (isnan(x[i])) {
+        if (std::isnan(x[i])) {
           F[i + j*m] = 1.0;
           j++;
         }
