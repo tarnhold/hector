@@ -29,7 +29,7 @@
     private:
       std::fstream   fs;
       std::string    ctl_file;
-      void           find_label(const std::string label);
+      void           find_label(const std::string& label);
       void           open_file(void);
       void           close_file(void);
 
@@ -38,12 +38,12 @@
 
     public:
       static Control& getInstance(std::string filename = "estimatetrend.ctl");
-      void     get_name_list(const std::string label, std::string *value, 
+      void     get_name_list(const std::string& label, std::string *value,
 									int& n);
-      void     get_string(const std::string label, std::string& value);
-      bool     get_bool(const std::string label);
-      int      get_int(const std::string label);
-      double   get_double(const std::string label);
+      void     get_string(const std::string& label, std::string& value);
+      bool     get_bool(const std::string& label);
+      int      get_int(const std::string& label);
+      double   get_double(const std::string& label);
   };
 
 #endif

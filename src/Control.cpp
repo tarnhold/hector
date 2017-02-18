@@ -52,7 +52,7 @@
  * \param[in] label: name of the parameter
  * \return The file-pointer is now located just before the value */
 //-------------------------------------------------
-  void Control::find_label(const std::string label)
+  void Control::find_label(const std::string& label)
 //-------------------------------------------------
   {
     using namespace std;
@@ -84,7 +84,7 @@
  * \param[out] n: the number of values read
  */
 //--------------------------------------------------------------------------
-  void Control::get_name_list(const std::string label, std::string *value, 
+  void Control::get_name_list(const std::string& label, std::string *value,
 								     int& n)
 //--------------------------------------------------------------------------
   {
@@ -123,7 +123,7 @@
  * \param{out] value[]: the read value (string)
  */
 //---------------------------------------------------------------------
-  void Control::get_string(const std::string label, std::string& value)
+  void Control::get_string(const std::string& label, std::string& value)
 //---------------------------------------------------------------------
   {
     using namespace std;
@@ -143,7 +143,7 @@
  * \return boolean (yes=true, no=false)
  */
 //-----------------------------------------------
-  bool Control::get_bool(const std::string label)
+  bool Control::get_bool(const std::string& label)
 //-----------------------------------------------
   {
     using namespace std;
@@ -167,7 +167,7 @@
  * \return integer that is read
  */
 //---------------------------------------------
-  int Control::get_int(const std::string label)
+  int Control::get_int(const std::string& label)
 //---------------------------------------------
   {
     int   i;
@@ -191,7 +191,7 @@
  * \return double that is read
  */
 //---------------------------------------------------
-  double Control::get_double(const std::string label)
+  double Control::get_double(const std::string& label)
 //---------------------------------------------------
   {
     double   y;
