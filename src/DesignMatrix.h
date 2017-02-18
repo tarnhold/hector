@@ -25,7 +25,8 @@
         const double           tpi,pi;
         std::string            unit;
         bool                   estimate_multitrend,varying_seasonal;
-        int                    n,m,Ngaps,n_periodic_signals,n_offsets,n_breaks;
+        size_t                 Ngaps;
+        int                    n,m,n_periodic_signals,n_offsets,n_breaks;
         int                    n_postseismiclog,n_postseismicexp;
         int                    degree_polynomial,n_channels,index_offset;
         int                    varyingseasonal_N,index_seasonal;
