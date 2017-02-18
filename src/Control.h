@@ -46,7 +46,7 @@
       void           open_file(void);
       void           close_file(void);
 
-      Control(const std::string& file);
+      explicit Control(const std::string& file);
       ~Control(void);
 
     public:
