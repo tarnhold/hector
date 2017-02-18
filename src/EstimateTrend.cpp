@@ -66,3 +66,5 @@
 
     return EXIT_SUCCESS;
   }
+
+/* vim:set shiftwidth=2 softtabstop=2 expandtab: */

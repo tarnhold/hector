@@ -716,3 +716,5 @@
     delete[] x_ori;
     fftw_free (FH_omp);
   }
+
+/* vim:set shiftwidth=2 softtabstop=2 expandtab: */

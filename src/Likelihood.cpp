@@ -153,3 +153,5 @@
   {
     method->compute_L_and_ICs(param);
   }
+
+/* vim:set shiftwidth=2 softtabstop=2 expandtab: */

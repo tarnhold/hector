@@ -449,3 +449,5 @@
     //--- Finally, apply white noise sigma
     cblas_dscal(m,sigma_fixed*Scale,y,1);
   }
+
+/* vim:set shiftwidth=2 softtabstop=2 expandtab: */

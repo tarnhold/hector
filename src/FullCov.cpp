@@ -224,7 +224,6 @@
   }
 
 
-
 /*! Compute sigmas
  */
 //-------------------------------------------
@@ -235,3 +234,5 @@
     cerr << "FullCov:compute_BIC_cs is not implemented!" << endl;
     exit(EXIT_FAILURE);
   }
+
+/* vim:set shiftwidth=2 softtabstop=2 expandtab: */

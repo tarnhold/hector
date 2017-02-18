@@ -1049,7 +1049,6 @@
   }
 
 
-
 /*! To compute prior, I need first and last epoch
  */
 //---------------------------------------------------
@@ -1059,3 +1058,5 @@
     t0 = t[0]; 
     t1 = t[t.size()-1]; 
   }
+
+/* vim:set shiftwidth=2 softtabstop=2 expandtab: */

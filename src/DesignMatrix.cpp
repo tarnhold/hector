@@ -756,3 +756,5 @@ DesignMatrix* DesignMatrix::singleton = NULL;
 					     m,1,n,1.0,H,m,theta,n,0.0,xhat,m);
     observations.set_xhat(xhat);
   }
+
+/* vim:set shiftwidth=2 softtabstop=2 expandtab: */
