@@ -23,6 +23,7 @@ SUBVERSION=2
 #--- Check on which machine this script is running
 HOST=$(shell hostname)
 $(info $(HOST))
+DISTRIB=$(shell lsb_release -is)
 
 #--- create executables that are stand-alone static binaries or do they call 
 #    shared libraries?
@@ -83,6 +84,18 @@ else ifeq "$(HOST)" "FC21"
   INC_DIR = -I./ -I/usr/include/atlas-x86_64-base
   LIB_DIR = -L/usr/lib64/atlas/
   ATLAS   = -llapack -lcblas -lblas -latlas 
+  GSL     = -lgsl
+  FFTW    = -lfftw3
+
+#--- Arch Linux
+else ifeq "$(DISTRIB)" "Arch"
+  CPP = g++
+  $(info ./src/Makefile: Arch Linux)
+  PREFIX=/usr
+  CPPFLAGS= -O3 -fopenmp -Wall -Wextra
+  INC_DIR = -I./ -I/usr/include/atlas
+  LIB_DIR = -L/usr/lib
+  ATLAS   = -llapack -latlas -lcblas
   GSL     = -lgsl
   FFTW    = -lfftw3
 
