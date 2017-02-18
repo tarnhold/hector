@@ -63,9 +63,12 @@
   {
     Observations   &observations=Observations::getInstance();
     DesignMatrix   *designmatrix=NULL;
-    int            i,j,n;
+    int            n;
     double         *x,*H,*theta,*Ctheta;
+#ifdef DEBUG
+    int            i,j;
     FILE           *fp;
+#endif
 
     using namespace std;
     //--- get observations and design matrix H
