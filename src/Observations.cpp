@@ -993,11 +993,11 @@
 /*! Add offset
  */
 //--------------------------------------------------------
-  void Observations::change_offset(int column, double MJD)
+  void Observations::change_offset(size_t column, double MJD)
 //--------------------------------------------------------
   {
     using namespace std;
-    if (column<0 || column>=offsets.size()) {
+    if (column>=offsets.size()) {
       cerr << "Invalid column specification: " << column << endl;
       exit(EXIT_FAILURE);
     }
