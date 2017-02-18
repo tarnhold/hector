@@ -639,7 +639,6 @@ DesignMatrix* DesignMatrix::singleton = NULL;
               corr_pos = theta[1+k]*(breaks[k]-breaks[k-1]);
               corr_vel = sqrt(pow(error[i],2.0) + pow(error[1+k]*(breaks[k] 
 						-breaks[k-1]),2.0)) - error[i];
-              corr_vel = 0.0;
             }
           }
         }
