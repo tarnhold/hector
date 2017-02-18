@@ -34,7 +34,7 @@ executable_type = shared
 #    able to create static binaries.
 ifeq "$(HOST)" "Machiels-MacBook"
   CPP     = /opt/local/bin/g++-mp-6   # Gnu compiler 
-  CPPFLAGS= -O3 -fopenmp
+  CPPFLAGS= -O3 -fopenmp -std=c++11
   INC_DIR = -I/opt/local/include 
   LIB_DIR = -L/opt/local/lib 
   PREFIX  =/opt/local
@@ -47,13 +47,13 @@ else ifeq "$(HOST)" "Machiels-MacBook-Pro-2.local"
   INC_DIR = -I/opt/local/include -I/opt/local/include/libomp 
   PREFIX  =/opt/local
   ifeq "$(executable_type)" "static"
-    CPPFLAGS= -O1 -march=x86-64
+    CPPFLAGS= -O1 -march=x86-64 -std=c++11
     LIB_DIR = -L./ -lmine2
     ATLAS   = 
     GSL     = 
     FFTW    = 
   else
-    CPPFLAGS= -O2 -Xpreprocessor -fopenmp
+    CPPFLAGS= -O2 -Xpreprocessor -fopenmp -std=c++11
     #CPPFLAGS= -g -fno-omit-frame-pointer -fsanitize=address
     ATLAS   = -latlas -llapack -lcblas -lblas
     #ATLAS   = -lblas -lcblas  -latlas
@@ -68,7 +68,7 @@ else ifeq "$(HOST)" "Machiels-MacBook-Pro-2.local"
 else ifeq "$(HOST)" "carga.vguest.segal"
   CPP = g++
   PREFIX=/usr/local
-  CPPFLAGS= -O3 -fopenmp -static
+  CPPFLAGS= -O3 -fopenmp -static -std=c++11
   INC_DIR = -I./ -I/usr/include/atlas
   LIB_DIR = -L/usr/local/lib64/
   ATLAS   = -lmy_lapack -lmy_cblas -lmy_atlas # use my own compiled Atlas lib
@@ -80,7 +80,7 @@ else ifeq "$(HOST)" "FC21"
   CPP = g++
   $(info ./src/Makefile: PAULS Fedora Core 21 V.machine)
   PREFIX=/usr/local
-  CPPFLAGS= -O3 -fopenmp
+  CPPFLAGS= -O3 -fopenmp -std=c++11
   INC_DIR = -I./ -I/usr/include/atlas-x86_64-base
   LIB_DIR = -L/usr/lib64/atlas/
   ATLAS   = -llapack -lcblas -lblas -latlas 
@@ -92,7 +92,7 @@ else ifeq "$(DISTRIB)" "Arch"
   CPP = g++
   $(info ./src/Makefile: Arch Linux)
   PREFIX=/usr
-  CPPFLAGS= -O3 -fopenmp -Wall -Wextra
+  CPPFLAGS= -O3 -fopenmp -Wall -Wextra -std=c++11
   INC_DIR = -I./ -I/usr/include/atlas
   LIB_DIR = -L/usr/lib
   ATLAS   = -llapack -latlas -lcblas
@@ -105,9 +105,9 @@ else
   $(info ./src/Makefile: Unknown machine, I am using standard values)
   PREFIX=/usr/local
   ifeq "$(executable_type)" "static"
-    CPPFLAGS= -O3 -fopenmp -static 
+    CPPFLAGS= -O3 -fopenmp -static -std=c++11
   else
-    CPPFLAGS= -O3 -fopenmp 
+    CPPFLAGS= -O3 -fopenmp -std=c++11
   endif
   INC_DIR = -I./ -I/usr/include/atlas
   LIB_DIR = -L/usr/lib/atlas-base/
