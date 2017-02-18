@@ -81,7 +81,7 @@
  * created.
  */
 //---------------------------------------------
-  double my_f(const gsl_vector *v, void *dummy)
+  double my_f(const gsl_vector *v, void * /*dummy*/)
 //---------------------------------------------
   {
      Likelihood    &likelihood=Likelihood::getInstance();

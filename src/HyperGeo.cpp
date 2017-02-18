@@ -150,7 +150,7 @@
     //--- Simulate nested fuctions by creating a local class
     class Local {
       public:
-        complex<double>f1(complex<double>u,complex<double>v,complex<double>w) {
+        complex<double>f1(complex<double>/*u*/,complex<double>/*v*/,complex<double>w) {
           return w;
         }
         complex<double>f2(complex<double> u,complex<double>v,complex<double>w,

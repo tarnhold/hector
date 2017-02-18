@@ -253,7 +253,7 @@
 /*! Not implemented
  */
 //---------------------------------------------------------------
-  void PowerlawApprox::set_noise_parameters(double *params_fixed)
+  void PowerlawApprox::set_noise_parameters(double * /*params_fixed*/)
 //---------------------------------------------------------------
   {
     using namespace std;
@@ -266,7 +266,7 @@
 /*! Compute PSD for given frequency
  */
 //-----------------------------------------------
-  double PowerlawApprox::compute_G(double lambda)
+  double PowerlawApprox::compute_G(double /*lambda*/)
 //-----------------------------------------------
   {
     using namespace std;
@@ -279,7 +279,7 @@
 /*! Compute impulse response: h
  */
 //---------------------------------------------------------------
-  void PowerlawApprox::compute_impulse_response(int m, double* h)
+  void PowerlawApprox::compute_impulse_response(int /*m*/, double* /*h*/)
 //---------------------------------------------------------------
   {
     using namespace std;

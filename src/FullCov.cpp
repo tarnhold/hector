@@ -228,7 +228,7 @@
 /*! Compute sigmas
  */
 //-------------------------------------------
-  void FullCov::compute_BIC_cs(double *BIC_c)
+  void FullCov::compute_BIC_cs(double * /* BIC_c */)
 //-------------------------------------------
   {
     using namespace std;
