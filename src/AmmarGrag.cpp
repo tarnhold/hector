@@ -72,7 +72,7 @@
     //    to have zero entries on the rows when there is a gap.
     if (Ngaps>0) {
       for (i=0;i<m;i++) {
-        if (isnan(x[i])) {
+        if (std::isnan(x[i])) {
           x[i] = 0.0;
           cblas_dscal(n,0.0,&H[i],m);
         }
@@ -570,7 +570,7 @@
           already_used=true;
         } 
       } 
-      if (isnan(x_ori[i]) || already_used==true) {
+      if (std::isnan(x_ori[i]) || already_used==true) {
         BIC_c[i] = LARGE;
       } else {
 
@@ -675,7 +675,7 @@
         //    move this section of code outside the loop over i to avoid 
         //    computing the same thing over and over but I've kept it here
         //    to keep the code readable.
-        if (!isnan(beta_spacing)) {
+        if (!std::isnan(beta_spacing)) {
           fact_k = 1.0;
           for (j=1;j<=n_offsets;j++) fact_k *= j;
           lnf_s = log(pow(lambda,n_offsets)*exp(-lambda)/fact_k);
@@ -683,7 +683,7 @@
 
         //--- Size of offsets follows exponential distribution
         lnf_theta = 0.0;
-        if (!isnan(beta_size)) {
+        if (!std::isnan(beta_size)) {
           //--- prior for size of offsets     
           for (j=0;j<n_offsets;j++) {
             lnf_theta += -fabs(theta_omp[l*n+offset_index+j])/beta_size;

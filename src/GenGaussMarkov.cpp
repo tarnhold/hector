@@ -49,7 +49,7 @@
       exit(EXIT_FAILURE);
     }
 
-    if (isnan(d_fixed)==false) {
+    if (!std::isnan(d_fixed)) {
       //--- If we set d fixed, then phi is automatically fixed too. The idea
       //    is to have a small value so that the power-law does not flatten 
       //    out too soon.
@@ -210,7 +210,7 @@
       for (i=0;i<m;i++) {
         gamma_x[i] = scale*_2F1[i];
         scale     *= (d+i)*(1.0-phi)/(i+1.0);
-        if (isnan(gamma_x[i])) {
+        if (std::isnan(gamma_x[i])) {
           cout << "Trouble in paradise!" << endl;
           cout << "i=" << i << ", d=" << d << ", 1-phi=" << phi << endl;
           exit(EXIT_FAILURE);
@@ -242,7 +242,7 @@
     using namespace std;
     T = 1.0/(365.25*24.0*3600.0*observations.get_fs()); // T in yr
 
-    if (isnan(d_fixed)) d = param[0];
+    if (std::isnan(d_fixed)) d = param[0];
     else                d = d_fixed;
     
     cout << "sigma     = " << sigma/pow(T,0.5*d)

@@ -75,7 +75,7 @@
     //    MLEBase class.
     j=0;
     for (i=0;i<m;i++) {
-      if (!isnan(x[i])) {
+      if (!std::isnan(x[i])) {
         dummyx[j] = x[i];
         dummyt[j] = t[i];
         cblas_dcopy(n,&H[i],m,&dummyH[j],N);
@@ -133,10 +133,10 @@
 
     i1=0;
     for (i0=0;i0<m;i0++) {
-      if (!isnan(x[i0])) {
+      if (!std::isnan(x[i0])) {
         j1=0;
         for (j0=0;j0<m-i0;j0++) {
-          if (!isnan(x[i0+j0])) {
+          if (!std::isnan(x[i0+j0])) {
             if (i1>=N || j1>=N || (i1+(i1+j1)*N)>=N*N) {
               cerr << "Oops, i1=" << i1 << ", j1=" << j1 << endl;
               exit(EXIT_FAILURE);

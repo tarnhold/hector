@@ -142,7 +142,7 @@
 //------------------------------------------------------------
   {
     using namespace std;
-    if (isnan(*(double*)a) || isnan(*(double*)b)) {
+    if (std::isnan(*(double*)a) || std::isnan(*(double*)b)) {
       cerr << "Something wrong here!" << endl;
       exit(EXIT_FAILURE);
     } else { 

@@ -478,7 +478,7 @@ DesignMatrix* DesignMatrix::singleton = NULL;
       //--- Put the ones in the right places
       j=0;
       for (i=0;i<m;i++) {
-        if (isnan(x[i])) {
+        if (std::isnan(x[i])) {
           F[i + j*m] = 1.0;
           j++;
         }

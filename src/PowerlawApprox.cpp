@@ -50,7 +50,7 @@
 
     using namespace std;
     //--- Check if we need to estimate the spectral index or not
-    if (isnan(d_fixed_)==false) {
+    if (!std::isnan(d_fixed_)) {
       estimate_spectral_index = false;
       d_fixed = d_fixed_;
     } else {

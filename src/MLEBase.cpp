@@ -228,7 +228,7 @@
     lnf_s     = 0.0;
     //--- Number of offsets follows poisson distribution, also need to be
     //    computed for zero offsets!
-    if (!isnan(beta_size)) {
+    if (!std::isnan(beta_size)) {
       observations.get_t0t1(t0,t1);
       offset_index = designmatrix->get_offset_index();
 
@@ -241,7 +241,7 @@
 
     lnf_theta = 0.0;
     //--- prior for size of offsets     
-    if (n_offsets>0 && !isnan(beta_spacing)) {
+    if (n_offsets>0 && !std::isnan(beta_spacing)) {
       for (j=0;j<n_offsets;j++) {
         lnf_theta += -fabs(theta[offset_index+j])/beta_size;
       }
