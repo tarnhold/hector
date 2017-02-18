@@ -378,7 +378,7 @@
  * \param[out] sigma_eta         standard deviation of the driving white noise
  */
 //---------------------------------------------------
-  void AmmarGrag::compute_LeastSquares(double *param)
+  void AmmarGrag::compute_LeastSquares(double * /*param*/)
 //---------------------------------------------------
   {
     int            i,*ipiv,k;

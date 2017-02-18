@@ -41,7 +41,7 @@
 /*! The covariance matrix is a unit matrix
  */
 //-----------------------------------------------------------------
-  void White::get_covariance(double *param, int m, double *gamma_x)
+  void White::get_covariance(double * /*param*/, int m, double *gamma_x)
 //-----------------------------------------------------------------
   {
     int       i;
@@ -55,10 +55,11 @@
 /*! Nothing to show
  */
 //------------------------------------------------------------
-  void White::show(double *param, double *error, double sigma)
+  void White::show(double * /*param*/, double * /*error*/, double sigma)
 //------------------------------------------------------------
   {
     using namespace std;
+
     cout << "sigma     = " << sigma << " " << unit << endl;
     cout << "No noise parameters to show" << endl;
   }
@@ -68,7 +69,7 @@
 /*! There is no penalty
  */
 //--------------------------------------------
-  double White::compute_penalty(double *param)
+  double White::compute_penalty(double * /*param*/)
 //--------------------------------------------
   {
     return 0.0;
@@ -79,7 +80,7 @@
 /*! Nothing can be set or needs to be stored for white noise
  */
 //------------------------------------------------------
-  void White::set_noise_parameters(double *params_fixed)
+  void White::set_noise_parameters(double * /*params_fixed*/)
 //------------------------------------------------------
   {
     // Nothing needs to be stored
@@ -90,7 +91,7 @@
 /*! Compute PSD for given frequency
  */
 //--------------------------------------
-  double White::compute_G(double lambda)
+  double White::compute_G(double /*lambda*/)
 //--------------------------------------
   {
     return 1.0;

@@ -158,7 +158,7 @@
  * \param[in]  param       : array with noise parameters
  */
 //-------------------------------------------------
-  void FullCov::compute_LeastSquares(double *param)
+  void FullCov::compute_LeastSquares(double * /*param*/)
 //-------------------------------------------------
   {
     int         i,*ipiv;
