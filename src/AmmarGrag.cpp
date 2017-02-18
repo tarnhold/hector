@@ -491,3 +491,5 @@
     cout << "sigma_eta =" << sigma_eta << endl;
 #endif
   }
+
+/* vim:set shiftwidth=2 softtabstop=2 expandtab: */

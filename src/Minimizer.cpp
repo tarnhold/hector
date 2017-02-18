@@ -366,3 +366,5 @@
       param_[i] = param[i];
     }
   }
+
+/* vim:set shiftwidth=2 softtabstop=2 expandtab: */

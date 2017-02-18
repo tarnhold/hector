@@ -272,3 +272,5 @@
     cerr << "Please use pure Powerlaw class!" << endl;
     exit(EXIT_FAILURE);
   }
+
+/* vim:set shiftwidth=2 softtabstop=2 expandtab: */

@@ -108,3 +108,5 @@
     memset(h,0,m*sizeof(double)); //--- zero padding
     h[0] = 1.0;
   } 
+
+/* vim:set shiftwidth=2 softtabstop=2 expandtab: */
