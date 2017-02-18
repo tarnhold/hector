@@ -53,8 +53,8 @@
 //---!!-------------------------------------------
   {
     using namespace std;
+    size_t    i;
     string    datafile,filename,directory;
-    int       i;
     Control   &control = Control::getInstance();
 
     //--- To ensure the right sampling frequency is read, fs=NaN at first
@@ -302,10 +302,10 @@
 //--------------------------------------
   {
     using namespace std;
-    const double  TINY=1.0e-5;
-    bool          index_already_used;
-    int           i,j,k,m=t.size();
-    vector<int>   index;
+    const double   TINY=1.0e-5;
+    bool           index_already_used;
+    size_t         i,j,k,m=t.size();
+    vector<size_t> index;
 
     i=0;
     index.clear();
@@ -356,7 +356,7 @@
   void Observations::write_header(std::fstream& fp)
 //-------------------------------------------------
   {
-    int        i;
+    size_t     i;
     LogEntry   logdummy;
     ExpEntry   expdummy;
     TanhEntry  tanhdummy;
@@ -747,7 +747,7 @@
 //----------------------------------------
   {
     using namespace std; 
-    int      i;
+    size_t   i;
     fstream  fp;
     string   filename;
     Control  &control=Control::getInstance();
@@ -790,7 +790,7 @@
   void Observations::set_xhat(const double *xhat_)
 //------------------------------------------------
   {
-    int    i;
+    size_t i;
 
     using namespace std;
     for (i=0;i<x.size();i++) {
@@ -838,7 +838,7 @@
 //----------------------------------------------------
   {
     using namespace std;
-    int             i,j;
+    size_t          i,j;
     double          dt,slope;
     vector<double>  t_new,x_new;
 
@@ -911,7 +911,7 @@
 //------------------------------------
   {
     using namespace std;
-    int             i;
+    size_t          i;
     vector<double>  t_new,x_new;
 
     //--- Create two new vectors, without NaN's
@@ -950,7 +950,7 @@
   void Observations::get_offsets(std::vector<double>& offsets_)
 //-------------------------------------------------------------
   {
-    int   i;
+    size_t i;
 
     offsets_.clear();
     for (i=0;i<offsets.size();i++) {
@@ -966,7 +966,7 @@
   void Observations::get_breaks(std::vector<double>& breaks_)
 //-----------------------------------------------------------
   {
-    int   i;
+    size_t i;
 
     breaks_.clear();
     for (i=0;i<breaks.size();i++) {
@@ -982,7 +982,7 @@
   void Observations::get_postseismiclog(std::vector<LogEntry>& postseismiclog_)
 //-----------------------------------------------------------------------------
   {
-    int   i;
+    size_t i;
 
     postseismiclog_.clear();
     for (i=0;i<postseismiclog.size();i++) {
@@ -998,7 +998,7 @@
   void Observations::get_postseismicexp(std::vector<ExpEntry>& postseismicexp_)
 //-----------------------------------------------------------------------------
   {
-    int   i;
+    size_t i;
 
     postseismicexp_.clear();
     for (i=0;i<postseismicexp.size();i++) {
