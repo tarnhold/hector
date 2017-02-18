@@ -161,8 +161,8 @@
   void FullCov::compute_LeastSquares(double *param)
 //-------------------------------------------------
   {
-    int         i,j,*ipiv;
-    double      product,lambda,lambda_min,lambda_max;
+    int         i,*ipiv;
+    double      product;
 
     using namespace std;
     //--- Always compute A and y from dummyH and dummyx

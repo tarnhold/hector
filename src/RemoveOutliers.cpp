@@ -50,7 +50,6 @@
     Observations   &observations=Observations::getInstance();
     DesignMatrix   *designmatrix=NULL;
     int            i,j,n;
-    const double   TINY=1.0e-6;
     double         *t,*x,*H,*theta,*Ctheta;
     FILE           *fp;
 
@@ -146,7 +145,7 @@
     using namespace std;
     const double   NaN=sqrt(-1.0);
     Observations   &observations=Observations::getInstance();
-    int            m,bad_points,i,j;
+    int            m,bad_points,i;
     vector<double> q;
     double         *r,interquartile,median,lower_boundary,upper_boundary;
 

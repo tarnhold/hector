@@ -24,9 +24,9 @@
     using namespace std;
     Control          &control=Control::getInstance();
     NoiseModel       &noisemodel=NoiseModel::getInstance();
-    int              i,j,k,n_simulations,m,ms;
+    int              i,j,n_simulations,m,ms;
     string           directory,label,filename;
-    double           *y,*MJD,dt,ts;
+    double           *y,*MJD,dt;
     FILE             *fp;
     stringstream     ss;
   

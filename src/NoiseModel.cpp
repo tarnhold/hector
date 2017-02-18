@@ -127,8 +127,6 @@
   NoiseModel::~NoiseModel(void)
 //--!!-------------------------
   {
-    int    i;
-
     if (h!=NULL) { //-- This implies also F_h != NULL
       fftw_free (h);
       fftw_free (w);
@@ -183,7 +181,7 @@
   void NoiseModel::get_covariance(double *param, int m, double *gamma_x)
 //----------------------------------------------------------------------
   {
-    int      i,j,k;
+    int      i,k;
     double   fraction,*gamma_xIndv;
 
     using namespace std;
@@ -228,8 +226,8 @@
   void NoiseModel::show(double *param, double *error, double sigma_eta)
 //---------------------------------------------------------------------
   {
-    int           i,j,k;
-    double        fraction,d,T;
+    int           i,k;
+    double        fraction,T;
     Observations  &observations=Observations::getInstance();
 
     using namespace std;

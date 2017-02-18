@@ -41,7 +41,7 @@
   {
     using namespace std;
     string    datafile,filename,directory;
-    int       i,n,choice;
+    int       i;
     Control   &control = Control::getInstance();
 
     //--- To ensure the right sampling frequency is read, fs=NaN at first
@@ -366,7 +366,7 @@
     fstream   fp;
     string    fn(filename);
     double    fraction,MJD;
-    int       MSL,flag,year,yearly,missing;
+    int       MSL,flag,year,missing;
     char      line[80];
     long int  J;
     Calendar  calendar;

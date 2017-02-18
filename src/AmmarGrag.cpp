@@ -30,7 +30,7 @@
   AmmarGrag::AmmarGrag(void)
 //---!!---------------------
   {
-    int           i,j,k,Status,nyc,offset;
+    int           i,j,nyc,offset;
 
     using namespace std;
     //--- Make use of the fact that FFT can be performed in parallel
@@ -181,7 +181,7 @@
   double AmmarGrag::step1(double *gamma_x, double **l1, double **l2)
 //-------------------------------------------------------------------
   {
-    int      i,j,Status;
+    int      i;
     double   delta,ln_determinant_C,*dummy=NULL,gamma;
  
     using namespace std;
@@ -295,7 +295,7 @@
 //-------------------------------------------------
   {
     NoiseModel     &noisemodel=NoiseModel::getInstance();
-    struct timeval start,end,start_total;
+    struct timeval start,end;
     long           mtime, seconds, useconds;  
     int            i;
 
@@ -381,7 +381,7 @@
   void AmmarGrag::compute_LeastSquares(double *param)
 //---------------------------------------------------
   {
-    int            i,j,*ipiv,k;
+    int            i,*ipiv,k;
     double         product;
 
     using namespace std;

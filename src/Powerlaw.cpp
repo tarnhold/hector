@@ -95,7 +95,7 @@
   void Powerlaw::show(double *param, double *error, double sigma)
 //---------------------------------------------------------------
   {
-    double        d,phi,T;
+    double        d,T;
     Observations  &observations=Observations::getInstance();
 
     using namespace std;

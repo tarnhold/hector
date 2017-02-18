@@ -66,7 +66,7 @@
   {
     int             m;
     double          w;
-    static double   pi = atan(1.0)*4.0,s;
+    static double   s;
 
     if (i>=M) return 0.0; // outside range always zero
     if (i<0) i = -i;      // only symmetric window functions treated here
@@ -172,10 +172,8 @@
     using namespace std;
     Observations    &data=Observations::getInstance();
     int             i,j,L,K,n,k,skipped_segments;
-    double          Variance_xt,Variance_Gf,U,scale,Re,Im,fraction;
-    double          *t,*y,*dummy,MJD,obs,mod,dt,freq[2],percentage_gaps;
-    double const    deg = 45.0/atan(1.0);
-    char            line[80];
+    double          Variance_xt,Variance_Gf,U,scale,fraction;
+    double          *t,*y,*dummy,dt,freq[2],percentage_gaps;
     fstream         fp;
     FILE            *fp_res;
     string          name;
@@ -394,7 +392,7 @@
 //-----------------------------------------
   {
     double    *G=NULL,*f=NULL;
-    int       i,N;
+    int       N;
 
     compute_periodogram(N,&f,&G,segments);
     write_periodogram(N,f,G);
