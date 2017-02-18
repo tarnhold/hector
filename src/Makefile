@@ -13,6 +13,7 @@ VERSION=1.6
 
 #--- Check on which machine this script is running
 HOST=$(shell hostname)
+DISTRIB=$(shell lsb_release -is)
 
 
 #--- Include directories
@@ -47,6 +48,16 @@ else ifeq "$(HOST)" "FC21"
   INC_DIR = -I./ -I/usr/include/atlas-x86_64-base
    LIB_DIR = -L/usr/lib64/atlas/
   ATLAS   = -llapack -lcblas -lblas -latlas 
+
+#--- Arch Linux
+else ifeq "$(DISTRIB)" "Arch"
+  CPP = g++
+  $(info ./src/Makefile: Arch Linux)
+  PREFIX=/usr
+  CPPFLAGS= -O3 -fopenmp -Wall -Wextra
+  INC_DIR = -I./ -I/usr/include/atlas
+  LIB_DIR = -L/usr/lib
+  ATLAS   = -llapack -latlas -lcblas
 
 #--- Standard values which work in many cases
 else 
