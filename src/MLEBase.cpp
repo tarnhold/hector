@@ -34,6 +34,8 @@
     DesignMatrix   *designmatrix=DesignMatrix::getInstance();
     NoiseModel     &noisemodel=NoiseModel::getInstance(); 
 
+    (void) control;
+
     using namespace std;
 
     //--- The matrices H and F and vector x are not really needed in this

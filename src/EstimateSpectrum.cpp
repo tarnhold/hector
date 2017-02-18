@@ -434,6 +434,7 @@
     //--- Open correct control file
     if (argc==1) {
       Control &control = Control::getInstance("estimatespectrum.ctl");
+      (void) control;
     } else {
       if (IsInteger(argv[1])==true) {
         segments = atoi(argv[1]);
@@ -441,18 +442,22 @@
           cerr << "Unacceptable number of segments: " << segments << endl;
           exit(EXIT_FAILURE);
         }
-        if (argc==2)      
-		Control &control= Control::getInstance("estimatespectrum.ctl");
-        else if (argc==3) 
-                Control &control= Control::getInstance(argv[2]); 
-        else {
+        if (argc==2) {
+          Control &control= Control::getInstance("estimatespectrum.ctl");
+          (void) control;
+        } else if (argc==3) {
+          Control &control= Control::getInstance(argv[2]);
+          (void) control;
+        } else {
           cerr << "estimatespectrum [number of segments (not counting "
                << "overlaps)] [controlfile.ctl]" << endl; 
           exit(EXIT_FAILURE);
         }
       } else {
-        if (argc==2) Control &control = Control::getInstance(argv[1]); 
-        else {
+        if (argc==2) {
+          Control &control = Control::getInstance(argv[1]);
+          (void) control;
+        } else {
           cerr << "estimatespectrum [number of segments (not counting "
                << "overlaps)] [controlfile.ctl]" << endl; 
           exit(EXIT_FAILURE);
