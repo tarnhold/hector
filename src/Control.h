@@ -33,7 +33,7 @@
       void           open_file(void);
       void           close_file(void);
 
-      Control(std::string file);
+      Control(const std::string& file);
       ~Control(void);
 
     public:
