@@ -296,8 +296,10 @@
   {
     NoiseModel     &noisemodel=NoiseModel::getInstance();
     struct timeval start,end;
-    long           mtime, seconds, useconds;  
     int            i;
+#ifdef TIME
+    long           mtime, seconds, useconds;
+#endif
 
     using namespace std;
     //--- Create the 1st column of the Covariance matrix. Since this is

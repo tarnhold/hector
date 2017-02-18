@@ -347,7 +347,10 @@
   void NoiseModel::setup_MonteCarlo(int m)
 //----------------------------------------
   {
-    int    i,j,ny,nyc;
+    int    i,ny,nyc;
+#ifdef DEBUG
+    int    j;
+#endif
 
     using namespace std;
     //--- Ask user about the driving white noise and the fractions

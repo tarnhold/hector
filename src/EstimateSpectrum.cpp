@@ -175,12 +175,14 @@
     double          Variance_xt,Variance_Gf,U,scale,fraction;
     double          *t,*y,*dummy,dt,freq[2],percentage_gaps;
     fstream         fp;
-    FILE            *fp_res;
     string          name;
     fftw_plan       plan_forward;
     fftw_complex    *Y=NULL;
     double         (*windowfunction)(int, int, double);
     Control        &control=Control::getInstance();
+#ifdef DEBUG
+    FILE            *fp_res;
+#endif
 
     //--- Which window function needs to be applied?
     try {
