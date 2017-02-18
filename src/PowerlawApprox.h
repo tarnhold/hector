@@ -31,7 +31,7 @@
         int            ms;
 
       public:
-        PowerlawApprox(double d_fixed_ = sqrt(-1.0));
+        explicit  PowerlawApprox(double d_fixed_ = sqrt(-1.0));
         void      get_covariance(double *param, int m, double *gamma_x);
         void      show(double *param, double *error, double sigma);
         int       get_Nparam(void);

@@ -35,7 +35,7 @@
 						    int m, double *gamma_x);
 
       public:
-        ARFIMA(double d_fixed_ = sqrt(-1.0));
+        explicit ARFIMA(double d_fixed_ = sqrt(-1.0));
         ~ARFIMA(void);
         void    find_roots(double *AR, std::complex<double> *rho);
         void    find_coefficients(std::complex<double> *rho, double *AR);
