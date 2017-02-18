@@ -236,10 +236,10 @@
     cout << endl << "Likelihood value" << endl << "--------------------"
          << endl;
     cout << fixed << setprecision(3);
-    cout << "min log(L)=" << ln_L << endl;
-    cout << "k         =" << n << " + " << Nparam << " + 1 = " << k << endl;
-    cout << "AIC       =" << AIC << endl;
-    cout << "BIC       =" << BIC << endl;
+    cout << "min log(L)= " << ln_L << endl;
+    cout << "k         = " << n << " + " << Nparam << " + 1 = " << k << endl;
+    cout << "AIC       = " << AIC << endl;
+    cout << "BIC       = " << BIC << endl;
 
     //--- free memory
     delete[] H;
