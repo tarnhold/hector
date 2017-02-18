@@ -25,8 +25,14 @@
 
 
 //---!!---------------------------------------
-  MLEBase::MLEBase(void) : NaN(sqrt(-1.0)),
-                           tpi(8.0*atan(1.0))
+  MLEBase::MLEBase(void)
+    : NaN(sqrt(-1.0))
+    , tpi(8.0*atan(1.0))
+    , sigma_eta(0.0)
+    , ln_det_C(0.0)
+    , AIC(0.0)
+    , BIC(0.0)
+    , ln_L(0.0)
 //---!!---------------------------------------
   {
     Control        &control = Control::getInstance();
