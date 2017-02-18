@@ -40,11 +40,11 @@
  * \param[in] file: filename of ctl-file, by default this is EstimateTrend.ctl 
  */
 //--!!------------------------------
-  Control::Control(std::string file)
+  Control::Control(const std::string& file)
+    : ctl_file(file)
 //--!!------------------------------
   {
     using namespace std;
-    ctl_file = file;
     open_file();
   }
 
