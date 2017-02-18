@@ -26,7 +26,7 @@
                                                         double F, double Fp1);
 
       public:
-        GenGaussMarkov(double d_fixed_ = sqrt(-1.0));
+        explicit GenGaussMarkov(double d_fixed_ = sqrt(-1.0));
         void    get_covariance(double *param, int m, double *gamma_x);
         void    show(double *param, double *error, double sigma);
         int     get_Nparam(void) {return Nparam;};

@@ -24,7 +24,7 @@
         std::string    unit;
 
       public:
-        Powerlaw(double d_fixed_ = sqrt(-1.0));
+        explicit Powerlaw(double d_fixed_ = sqrt(-1.0));
         void      get_covariance(double *param, int m, double *gamma_x);
         void      show(double *param, double *error, double sigma_eta);
         int       get_Nparam(void);
