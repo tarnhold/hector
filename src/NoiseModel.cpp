@@ -243,6 +243,8 @@
     double        fraction;
     Observations  &observations=Observations::getInstance();
 
+    (void) observations;
+
     using namespace std;
     cout << endl;
 

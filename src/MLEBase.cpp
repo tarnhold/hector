@@ -46,6 +46,8 @@
     DesignMatrix   *designmatrix=DesignMatrix::getInstance();
     NoiseModel     &noisemodel=NoiseModel::getInstance(); 
 
+    (void) control;
+
     using namespace std;
     //--- Prior probability of size of offset
     try {
