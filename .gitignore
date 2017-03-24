@@ -1,0 +1,14 @@
+*._*
+*.o
+*.so
+*.rej
+*.orig
+*.dat
+src/date2mjd
+src/estimatespectrum
+src/estimatetrend
+src/findoffset
+src/mjd2date
+src/modelspectrum
+src/removeoutliers
+src/simulatenoise
