@@ -468,7 +468,7 @@
           x.push_back(scale_factor*obs);
         }
       } else {
-        cerr << "Unable to understand line: " << line;
+        cerr << "Unable to understand line: " << line << endl;
         exit(EXIT_FAILURE);
       }
       fp.getline(line,80);
