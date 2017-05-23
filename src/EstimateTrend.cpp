@@ -26,6 +26,8 @@
   #include <cstdlib>
   #include <ctime>
 
+//  #define TIME
+
 //=============================================================================
 // Main program
 //=============================================================================
@@ -53,12 +55,18 @@
          SUBVERSION << endl << "************************************" << endl;
 
     Minimizer      minimizer;
+#ifdef TIME
     time_t         start,end;
 
     time(&start);
+#endif
+
     minimizer.solve();
+
+#ifdef TIME
     time(&end);
     cout << "Total computing time: " << difftime(end,start) << " sec" << endl;
+#endif
 
     //--- DesignMatrix is not a Meyer singleton so delete manually
     DesignMatrix   *designmatrix=DesignMatrix::getInstance();
