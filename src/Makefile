@@ -22,7 +22,7 @@ DISTRIB=$(shell lsb_release -is)
 #    able to create static binaries.
 ifeq "$(HOST)" "Machiels-MacBook"
   CPP     = /opt/local/bin/g++-mp-6   # Gnu compiler 
-  CPPFLAGS= -O3 -fopenmp
+  CPPFLAGS= -O3 -fopenmp -std=c++11
   INC_DIR = -I/opt/local/include 
   LIB_DIR = -L/opt/local/lib 
   PREFIX  =/opt/local
@@ -34,7 +34,7 @@ ifeq "$(HOST)" "Machiels-MacBook"
 else ifeq "$(HOST)" "carga.vguest.segal"
   CPP = g++
   PREFIX=/usr/local
-  CPPFLAGS= -O3 -fopenmp -static
+  CPPFLAGS= -O3 -fopenmp -static -std=c++11
   INC_DIR = -I./ -I/usr/include/atlas
   LIB_DIR = -L/usr/local/lib64/
   ATLAS   = -lmy_lapack -lmy_cblas -lmy_atlas # use my own compiled Atlas lib
@@ -44,7 +44,7 @@ else ifeq "$(HOST)" "FC21"
   CPP = g++
   $(info ./src/Makefile: PAULS Fedora Core 21 V.machine)
   PREFIX=/usr/local
-  CPPFLAGS= -O3 -fopenmp
+  CPPFLAGS= -O3 -fopenmp -std=c++11
   INC_DIR = -I./ -I/usr/include/atlas-x86_64-base
    LIB_DIR = -L/usr/lib64/atlas/
   ATLAS   = -llapack -lcblas -lblas -latlas 
@@ -64,7 +64,7 @@ else
   CPP = g++
   $(info ./src/Makefile: Unknown machine, I am using standard values)
   PREFIX=/usr/local
-  CPPFLAGS= -O3 -fopenmp -static 
+  CPPFLAGS= -O3 -fopenmp -static -std=c++11
   INC_DIR = -I./ -I/usr/include/atlas
   LIB_DIR = -L/usr/lib/atlas-base/
   ATLAS   = -llapack_atlas -latlas -lcblas
