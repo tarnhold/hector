@@ -145,7 +145,7 @@
         for (i=0;i<Nparam;i++) {
           printf("%11.5f ",gsl_vector_get(s->x,i));
         }
-        printf("  f()= %10.6f  size=%.3f\n",s->fval, size);
+        printf("  f()= %10.6f  size=%.4f\n",s->fval, size);
       } while (status == GSL_CONTINUE && iter < 1500);
 
       //--- Sanity check    
