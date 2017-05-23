@@ -115,7 +115,7 @@
       b1[i] = b1[i-1]*(a+I-2.0)*(b+I-2.0)*z;
       c1[i] = c1[i-1]*(I-1.0)*(c+I-2.0);
 
-      if (isinf(abs(a1[i])) || isinf(abs(b1[i])) || isinf(abs(c1[i]))) {
+      if (std::isinf(abs(a1[i])) || std::isinf(abs(b1[i])) || std::isinf(abs(c1[i]))) {
         throw "HyperGeo::singlefraction2F1 - a1,b1,c1 become infinite";
         return NAN;
       } 
