@@ -314,8 +314,9 @@
           i++;
         }
       } else {
-        cout << "offset " << offsets[i] << " is outside time span" << endl;
-        cout << t[0] << ", " << t[m-1] << endl;
+        cout << fixed
+             << "offset " << offsets[i] << " is outside time span ["
+             << t[0] << ", " << t[m-1] << "]" << endl;
         offsets.erase(offsets.begin()+i);
       }
     }
