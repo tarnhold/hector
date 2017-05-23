@@ -508,6 +508,20 @@ DesignMatrix* DesignMatrix::singleton = NULL;
 
 
 
+/*! Compute phase value and its uncertainty
+ */
+//------------------------------------------------------------------------
+  void DesignMatrix::compute_Pha(double Ac, double As, double sigma_Ac,
+                          double sigma_As, double& Pha, double& sigma_out)
+//------------------------------------------------------------------------
+  {
+    Pha       = atan2(As, Ac);
+    sigma_out = sqrt(pow(Ac/(pow(As,2.0)+pow(Ac,2.0))*sigma_As, 2.0) +
+                    pow(-As/(pow(As,2.0)+pow(Ac,2.0))*sigma_Ac, 2.0));
+  }
+
+
+
 /*! show meaning of estimated least-squares parameters on screen
  *
  * \param[in]  theta    vector containing estimated parameters of LS
@@ -521,7 +535,7 @@ DesignMatrix* DesignMatrix::singleton = NULL;
     const double   rad=tpi/360.0;
     int            i,j,year,month,day,hour,minute;
     size_t         k;
-    double         ds = 365.25,second,corr_pos = 0.0,corr_vel = 0.0,Amp,sigma_out;
+    double         ds = 365.25,second,corr_pos = 0.0,corr_vel = 0.0,Amp,Pha,sigma_out;
     double         *xhat,*theta_dummy;
     fstream        fp;
     Calendar       calendar;
@@ -597,7 +611,8 @@ DesignMatrix* DesignMatrix::singleton = NULL;
         compute_Amp(theta[i-2],theta[i-1],0.5*(error[i-2]+error[i-1]),
 							   Amp,sigma_out);
         cout<<"Amp yearly : " << Amp <<" +/- "<< sigma_out << " " <<unit<<endl;
-        cout<<"Pha yearly : " << atan2(theta[i-1],theta[i-2])/rad 
+        compute_Pha(theta[i-2],theta[i-1],error[i-2],error[i-1],Pha,sigma_out);
+        cout<<"Pha yearly : " << Pha/rad <<" +/- "<< sigma_out/rad
 							 << " degrees" << endl;
       }
 
@@ -609,7 +624,8 @@ DesignMatrix* DesignMatrix::singleton = NULL;
         compute_Amp(theta[i-2],theta[i-1],0.5*(error[i-2]+error[i-1]),
 							   Amp,sigma_out);
         cout<<"Amp hyearly : " << Amp <<" +/- "<< sigma_out << " " <<unit<<endl;
-        cout<<"Pha hyearly : " << atan2(theta[i-1],theta[i-2])/rad 
+        compute_Pha(theta[i-2],theta[i-1],error[i-2],error[i-1],Pha,sigma_out);
+        cout<<"Pha hyearly : " << Pha/rad <<" +/- "<< sigma_out/rad
 							 << " degrees" << endl;
       }
     }
@@ -624,8 +640,9 @@ DesignMatrix* DesignMatrix::singleton = NULL;
 							   Amp,sigma_out);
       printf("amp %7.2lf : %lf +/- %lf %s\n",periods[j],Amp,
 							sigma_out,unit.c_str());
-      printf("pha %7.2lf : %lf degrees\n",periods[j],
-					      atan2(theta[i-1],theta[i-2])/rad);
+      compute_Pha(theta[i-2],theta[i-1],error[i-2],error[i-1],Pha,sigma_out);
+      printf("pha %7.2lf : %lf +/- %lf degrees\n",periods[j],
+					      Pha/rad, sigma_out/rad);
     }
     for (j=0;j<n_offsets;j++) {
       if (estimate_multitrend && breaks.size()>0) {

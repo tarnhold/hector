@@ -43,6 +43,8 @@
  
         void compute_Amp(double Ac, double As,
                           double sigma_in, double& Amp, double& sigma_out);
+        void compute_Pha(double Ac, double As, double sigma_Ac,
+                          double sigma_As, double& Pha, double& sigma_out);
 
       public:
         //--- Normal pointer singleton
