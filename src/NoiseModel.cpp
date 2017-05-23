@@ -80,9 +80,11 @@
     seed     = time (NULL) * getpid();
     gsl_rng_set (r_random, seed);
 
+#ifdef DEBUG
     printf ("generator type: %s\n", gsl_rng_name (r_random));
     printf ("seed = %lu\n", gsl_rng_default_seed);
     printf ("first value = %lu\n", gsl_rng_get (r_random));
+#endif
 
     //--- Create all necessary classes
     for (i=0;i<Nmodels;i++) {
