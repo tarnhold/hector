@@ -85,6 +85,13 @@
       scale_factor = 1.0;
     }
 
+    //--- Do we want to write empty mom records?
+    try {
+      write_empty_records = control.get_bool("WriteEmptyRecords");
+    } catch (exception &e) {
+      write_empty_records = false;
+    }
+
     //--- construct filename
     filename = directory + datafile;
     
@@ -494,6 +501,10 @@
           t.push_back(MJD);
           x.push_back(scale_factor*obs);
         }
+      } else if (sscanf(line,"%lf",&MJD)==1) {
+#ifdef DEBUG
+        cout << "Found empty MJD line, ignoring it" << endl;
+#endif
       } else {
         cerr << "Unable to understand line: " << line << endl;
         exit(EXIT_FAILURE);
@@ -773,10 +784,17 @@
     //--- Save the data to the output file
     for (i=0;i<t.size();i++) {
       if (xhat.size()==0) { 
-        fp << fixed << t[i] << "  " << x[i] << endl;
-      } else {
-        if (!std::isnan(x[i])) {
-          fp << fixed << t[i] << "  " << x[i] << "  " << xhat[i] << endl;
+        fp << setprecision(6) << fixed << t[i] << "  "
+           << x[i] << endl;
+       } else {
+         if (!std::isnan(x[i])) {
+          fp << setprecision(6) << fixed << t[i] << "  "
+             << x[i] << "  " << xhat[i] << endl;
+         } else {
+           if (write_empty_records) {
+             // just write epoch with no data
+             fp << setprecision(6) << fixed << t[i] << endl;
+          }
         }
       }
     }
