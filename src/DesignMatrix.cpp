@@ -555,8 +555,16 @@ DesignMatrix* DesignMatrix::singleton = NULL;
     } else {
       calendar.compute_date(th,year,month,day,hour,minute,second);
       cout << "bias : " << theta[0] << " +/- " << error[0] << " " << unit 
-           << " (at " << year << "/" << month << "/" << day << ", " 
-           << hour << ":" << minute << ":" << second << ")" << endl;
+           << " (at ";
+      cout.fill('0');
+      cout << setw(4) << year << "/"
+           << setw(2) << month << "/"
+           << setw(2) << day << ", "
+           << setw(2) << hour << ":"
+           << setw(2) << minute << ":"
+           << setw(2) << setprecision(3) << second << ")" << endl;
+      cout.fill(' ');
+
       if (degree_polynomial>0) {
         cout << "trend: " << theta[1]*ds << " +/- " << error[1]*ds
              << " " << unit << "/year" << endl;
