@@ -589,6 +589,22 @@ DesignMatrix* DesignMatrix::singleton = NULL;
   }
 
 
+namespace {
+//------------------------------------------------------------------------
+  std::string values_formatted(const std::string& name, double value,
+                                    double error, const std::string &unit)
+//------------------------------------------------------------------------
+  {
+    using namespace std;
+    stringstream ss;
+    ss << setw(36) << name << " : " << fixed
+       << setw(13) << setprecision(3) << value << " +/- "
+       << setw(7)  << setprecision(3) << error << " "
+       << unit;
+    return ss.str();
+  }
+}
+
 
 /*! show meaning of estimated least-squares parameters on screen
  *
@@ -607,22 +623,21 @@ DesignMatrix* DesignMatrix::singleton = NULL;
     double         *xhat,*theta_dummy;
     fstream        fp;
     Calendar       calendar;
+    ostringstream  buff;
 
     i=0;
-    cout << fixed << setprecision(3);
 
     if (estimate_multitrend==true) {
-      cout << "bias : " << theta[0] << " +/- " << error[0] << " " << unit 
-           << endl;
+      cout << values_formatted("bias", theta[0], error[0], unit) << endl;
       for (j=0;j<=n_breaks;j++) {
-        cout << "trend: " << theta[1+j]*ds << " +/- " << error[1+j]*ds
-             << " " << unit << "/year" << endl;
+        cout << values_formatted("trend", theta[1+j]*ds, error[1+j]*ds, unit)
+             << "/year" << endl;
       }
       i += 2+n_breaks;
 
     } else {
       calendar.compute_date(th,year,month,day,hour,minute,second);
-      cout << "bias : " << theta[0] << " +/- " << error[0] << " " << unit 
+      cout << values_formatted("bias", theta[0], error[0], unit)
            << " (at ";
       cout.fill('0');
       cout << setw(4) << year << "/"
@@ -634,16 +649,20 @@ DesignMatrix* DesignMatrix::singleton = NULL;
       cout.fill(' ');
 
       if (degree_polynomial>0) {
-        cout << "trend: " << theta[1]*ds << " +/- " << error[1]*ds
-             << " " << unit << "/year" << endl;
+        cout << values_formatted("trend", theta[1]*ds, error[1]*ds, unit)
+             << "/year" << endl;
       }
       if (degree_polynomial>1) {
-        cout << "quadratic (half acceleration): " << theta[2]*ds*ds 
- 	     << " +/- " << error[2]*ds*ds << " " << unit << "/year^2" << endl;
+        cout << values_formatted("quadratic (half acceleration)",
+                                theta[2]*ds*ds, error[2]*ds*ds, unit)
+             << "/year^2" << endl;
       }
       for (j=3;j<=degree_polynomial;j++) {
-        cout << "degree " << j << ": " << theta[j]*pow(ds,1.0*j) << " +/- "
- 	     << error[j]*pow(ds,1.0*j) << " " << unit << "/year^" << j << endl;
+        buff << "degree " << j;
+        cout << values_formatted(buff.str(), theta[j]*pow(ds,1.0*j),
+                                      error[j]*pow(ds,1.0*j), unit)
+             << "/year^" << j << endl;
+        buff.str("");
       }
       i += degree_polynomial + 1;
     }
@@ -680,45 +699,50 @@ DesignMatrix* DesignMatrix::singleton = NULL;
 
     } else {
       if (seasonal_signal==true) {
-        cout<<"cos yearly : " << theta[i] <<" +/- "<<error[i]<<" "<<unit<<endl;
+        cout << values_formatted("cos yearly", theta[i], error[i], unit) << endl;
         i++;
-        cout<<"sin yearly : " << theta[i] <<" +/- "<<error[i]<<" "<<unit<<endl;
+        cout << values_formatted("sin yearly", theta[i], error[i], unit) << endl;
         i++;
         compute_Amp(theta[i-2],theta[i-1],0.5*(error[i-2]+error[i-1]),
 							   Amp,sigma_out);
-        cout<<"Amp yearly : " << Amp <<" +/- "<< sigma_out << " " <<unit<<endl;
+        cout << values_formatted("Amp yearly", Amp, sigma_out, unit) << endl;
         compute_Pha(theta[i-2],theta[i-1],error[i-2],error[i-1],Pha,sigma_out);
-        cout<<"Pha yearly : " << Pha/rad <<" +/- "<< sigma_out/rad
-							 << " degrees" << endl;
+        cout << values_formatted("Pha yearly", Pha/rad, sigma_out/rad, "degrees") << endl;
       }
 
       if (halfseasonal_signal==true) {
-        cout<<"cos hyearly : " << theta[i] <<" +/- "<<error[i]<<" "<<unit<<endl;
+        cout << values_formatted("cos hyearly", theta[i], error[i], unit) << endl;
         i++;
-        cout<<"sin hyearly : " << theta[i] <<" +/- "<<error[i]<<" "<<unit<<endl;
+        cout << values_formatted("sin hyearly", theta[i], error[i], unit) << endl;
         i++;
         compute_Amp(theta[i-2],theta[i-1],0.5*(error[i-2]+error[i-1]),
 							   Amp,sigma_out);
-        cout<<"Amp hyearly : " << Amp <<" +/- "<< sigma_out << " " <<unit<<endl;
+        cout << values_formatted("Amp hyearly", Amp, sigma_out, unit) << endl;
         compute_Pha(theta[i-2],theta[i-1],error[i-2],error[i-1],Pha,sigma_out);
-        cout<<"Pha hyearly : " << Pha/rad <<" +/- "<< sigma_out/rad
-							 << " degrees" << endl;
+        cout << values_formatted("Pha hyearly", Pha/rad, sigma_out/rad, "degrees") << endl;
       }
     }
 
     //--- Periodic signals
     for (j=0;j<n_periodic_signals;j++) {
-      printf("cos %7.2lf : %lf +/- %lf %s\n",periods[j],theta[i],
-						error[i],unit.c_str()); i++;
-      printf("sin %7.2lf : %lf +/- %lf %s\n",periods[j],theta[i],
-						error[i],unit.c_str()); i++;
+      buff << "cos (T=" << fixed << setw(8) << setprecision(2) << periods[j] << ")";
+      cout << values_formatted(buff.str(), theta[i], error[i], unit) << endl;
+      buff.str("");
+      i++;
+      buff << "sin (T=" << fixed << setw(8) << setprecision(2) << periods[j] << ")";
+      cout << values_formatted(buff.str(), theta[i], error[i], unit) << endl;
+      buff.str("");
+      i++;
+
       compute_Amp(theta[i-2],theta[i-1],0.5*(error[i-2]+error[i-1]),
 							   Amp,sigma_out);
-      printf("amp %7.2lf : %lf +/- %lf %s\n",periods[j],Amp,
-							sigma_out,unit.c_str());
+      buff << "amp (T=" << fixed << setw(8) << setprecision(2) << periods[j] << ")";
+      cout << values_formatted(buff.str(), Amp, sigma_out, unit) << endl;
+      buff.str("");
       compute_Pha(theta[i-2],theta[i-1],error[i-2],error[i-1],Pha,sigma_out);
-      printf("pha %7.2lf : %lf +/- %lf degrees\n",periods[j],
-					      Pha/rad, sigma_out/rad);
+      buff << "pha (T=" << fixed << setw(8) << setprecision(2) << periods[j] << ")";
+      cout << values_formatted(buff.str(), Pha/rad, sigma_out/rad, "degrees") << endl;
+      buff.str("");
     }
     for (j=0;j<n_offsets;j++) {
       if (estimate_multitrend && breaks.size()>0) {
@@ -739,18 +763,25 @@ DesignMatrix* DesignMatrix::singleton = NULL;
         corr_pos = 0.0;
         corr_vel = 0.0;
       }
-      printf("offset at %10.4lf : %7.2lf +/- %5.2lf %s\n",offsets[j],
-			theta[i]-corr_pos,error[i]+corr_vel,unit.c_str()); i++;
+      buff << "offset at " << fixed << setw(10) << setprecision(4) << offsets[j];
+      cout << values_formatted(buff.str(), theta[i]-corr_pos, error[i]+corr_vel, unit)
+           << endl;
+      buff.str("");
+      i++;
     }
     for (j=0;j<n_postseismiclog;j++) {
-      printf("log relaxation at %10.4lf (T=%8.2lf) : %7.2lf +/- %5.2lf %s\n",
-		postseismiclog[j].MJD, postseismiclog[j].T,
-					theta[i],error[i],unit.c_str()); i++;
+      buff << "log relax at " << setw(10) << setprecision(4) << postseismiclog[j].MJD
+           << " (T=" << fixed << setw(8) << setprecision(2) << postseismiclog[j].T << ")";
+      cout << values_formatted(buff.str(), theta[i], error[i], unit) << endl;
+      buff.str("");
+      i++;
     }
     for (j=0;j<n_postseismicexp;j++) {
-      printf("exp relaxation at %10.4lf (T=%8.2lf) : %7.2lf +/- %5.2lf %s\n",
-		postseismicexp[j].MJD, postseismicexp[j].T,
-					theta[i],error[i],unit.c_str()); i++;
+      buff << "exp relax at " << setw(10) << setprecision(4) << postseismicexp[j].MJD
+           << " (T=" << fixed << setw(8) << setprecision(2) << postseismicexp[j].T << ")";
+      cout << values_formatted(buff.str(), theta[i], error[i], unit) << endl;
+      buff.str("");
+      i++;
     }
     for (j=0;j<n_ssetanh;j++) {
       printf("tanh sse at %10.4lf (T=%8.2lf) : %7.2lf +/- %5.2lf %s\n",
@@ -758,8 +789,10 @@ DesignMatrix* DesignMatrix::singleton = NULL;
 					theta[i],error[i],unit.c_str()); i++;
     }
     for (j=0;j<n_channels;j++) {
-      printf("scale factor of channel %d : %7.2lf +/- %5.2lf\n",j+1,
-						     theta[i],error[i]); i++;
+      buff << "scale factor of channel " << fixed << setw(1) << j+1;
+      cout << values_formatted(buff.str(), theta[i], error[i], unit) << endl;
+      buff.str("");
+      i++;
     }
   }
 
