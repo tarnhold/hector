@@ -135,7 +135,8 @@
 
     //--- Give summary of read data
     cout << "Filename              : " << filename << endl;
-    cout << "Number of observations: " << t.size() << endl;
+    cout << "Number of observations: " << t.size()-Ngaps << endl;
+    cout << "Number of gaps        : " << Ngaps << endl;
     cout << "Percentage of gaps    : " << double(Ngaps)/t.size()*100.0 << endl;
   }
 
