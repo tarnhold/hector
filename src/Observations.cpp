@@ -312,7 +312,7 @@
     index.clear();
 #ifdef DEBUG
     for (j=0;j<offsets.size();j++)
-      cout << j << " : offset=" << offsets[j] << endl;
+      cout << j << " : offset=" << fixed << offsets[j] << endl;
 #endif
     while (i<offsets.size()) {
       if (offsets[i]>t[0]-TINY && offsets[i]<t[m-1]+TINY) {
@@ -344,7 +344,7 @@
     }
 #ifdef DEBUG
     for (j=0;j<offsets.size();j++)
-      cout << j << " : offset=" << offsets[j] << endl;
+      cout << j << " : offset=" << fixed << offsets[j] << endl;
 #endif
 
   }
@@ -477,7 +477,7 @@
     while (!fp.eof()) {
       if (sscanf(line,"%lf %lf %lf",&MJD,&obs,&mod)==3) {
 #ifdef DEBUG
-        cout << "Found x & xhat: " << obs << ", " << mod << endl;
+        cout << "Found x & xhat: " << fixed << setprecision(5) << obs << ", " << mod << endl;
 #endif
         t.push_back(MJD);
         if (std::isnan(obs) || std::isnan(mod)) {
@@ -488,7 +488,7 @@
         }
       } else if (sscanf(line,"%lf %lf",&MJD,&obs)==2) {
 #ifdef DEBUG
-        cout << "Found x " << obs << endl;
+        cout << "Found x " << fixed << setprecision(5) << obs << endl;
 #endif
         if (!std::isnan(obs)) {
           t.push_back(MJD);
