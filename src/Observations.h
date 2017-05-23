@@ -28,6 +28,7 @@
         int                   Ngaps;
         double                fs,scale_factor;
         bool                  PSMSL_monthly,interpolate_data;
+        bool                  write_empty_records;
         void                  (Observations::*read_observations)(std::string 
 								     filename);
         std::vector<double>   t,x,xhat,offsets,breaks;
