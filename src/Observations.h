@@ -58,7 +58,8 @@
         Observations(void);
         void   read_header(std::fstream& fp, int component);
         void   read_external_header(std::fstream& fp);
-        void   clean_offsets(void);
+        void   clean_offsets_breaks(std::vector<double>& data,
+                                          const std::string& data_name);
         void   write_header(std::fstream& fp);
         void   read_PSMSL_monthly(std::string filename);
         void   read_mom(std::string filename);
