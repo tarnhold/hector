@@ -280,53 +280,86 @@
 
 
 
-/*! Clean up any found offsets. I mean, check if they fall between
- *  start and end time of data and if there is not more than one
- *  offset in a sequence of missing data.
+/*! Clean up any found offsets.
+ *  Check if they fall between start and end time of data,
+ *  they are not too close to each other and
+ *  that there is enough data in each sequence.
  */
 //--------------------------------------
   void Observations::clean_offsets(void)
 //--------------------------------------
   {
     using namespace std;
-    const double   TINY=1.0e-5;
-    bool           index_already_used;
-    size_t         i,j,k,m=t.size();
-    vector<size_t> index;
+    size_t         i,j,m=t.size();
+    const double   min_elements=3; // minimum required elements
+    const double   T=1.0/(fs*24.0*3600.0);
+    const double   minT=min_elements*T; // mininum distance of offsets
 
-    i=0;
-    index.clear();
+    if (offsets.size() < 1)
+      return;
+
 #ifdef DEBUG
     for (j=0;j<offsets.size();j++)
       cout << j << " : offset=" << fixed << offsets[j] << endl;
 #endif
+
+    // first remove offsets outside time span
+    i=0;
     while (i<offsets.size()) {
-      if (offsets[i]>t[0] && offsets[i]<t[m-1]) {
-        //--- find index
-        j=0;
-        while (t[j]<offsets[i] || (t[j]>offsets[i]-TINY && std::isnan(x[j]))) j++;
-        //cout << "i=" << i << ", index=" << j << " t[j]=" << t[j] <<  endl;
-        index_already_used = false;
-        for (k=0;k<index.size();k++) {
-          if (index[k]==j) {
-            index_already_used = true;
-          }
-        }
-        if (index_already_used==true) {
-          cout << "offset " << fixed << offsets[i] << " is already used" << endl;
-          offsets.erase(offsets.begin()+i);
-        } else {
-          index.push_back(j);
-          //cout << index.size() << " : " << index[index.size()-1] << endl;
-          i++;
-        }
-      } else {
+      if (offsets[i]<t[0] || offsets[i]>t[m-1]) {
         cout << fixed
              << "offset " << fixed << offsets[i] << " is outside time span ["
              << t[0] << ", " << t[m-1] << "]" << endl;
         offsets.erase(offsets.begin()+i);
+      } else if (offsets[i]<t[0]+minT || offsets[i]>t[m-1]-minT) {
+        cout << fixed
+             << "offset " << fixed << offsets[i] << " is too close to start/end ["
+             << t[0] << ", " << t[m-1] << "]" << endl;
+        offsets.erase(offsets.begin()+i);
+      } else {
+        i++;
       }
     }
+
+    // filter offsets that are too close to each other
+    i=1;
+    while (i<offsets.size()) {
+      // remove those whose distance is less than x sampling periods
+      if (offsets[i-1]+minT > offsets[i]) {
+        cout << fixed
+             << "offset " << fixed << offsets[i] << " is too close to previous one ["
+             << offsets[i-1] << "]" << endl;
+        offsets.erase(offsets.begin()+i);
+      } else {
+        i++;
+      }
+    }
+
+    // check if there are enough non-NaN data for each offset
+    i=0;
+    size_t count=0;
+    for (j=0;j<m;j++) {
+      if (t[j]>offsets[i] && i<offsets.size())
+      {
+#ifdef DEBUG
+        cout << "offset at " << fixed << offsets[i] << " has "
+             << count << " elements" << endl;
+#endif
+
+        if (count<min_elements) {
+          cout << fixed << "offset " << fixed << offsets[i]
+               << " has too less data [count: " << count << "]" << endl;
+          offsets.erase(offsets.begin()+i);
+        } else {
+          i++;
+          count = 0;
+        }
+      }
+
+      if (!std::isnan(x[j]))
+        count++;
+    }
+
 #ifdef DEBUG
     for (j=0;j<offsets.size();j++)
       cout << j << " : offset=" << fixed << offsets[j] << endl;
