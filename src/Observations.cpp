@@ -29,6 +29,7 @@
 //==============================================================================
   #include "Observations.h"
   #include "Calendar.h"
+  #include <algorithm>
   #include <iostream>
   #include <ostream>
   #include <iomanip>
@@ -196,14 +197,7 @@
         }
       } else if (strncmp("# break",line,7)==0) {
         if (sscanf(&line[8],"%lf",&MJD)==1) {
-          if (breaks.size()==0 || 
-		(breaks.size()>0 && breaks[breaks.size()-1]<MJD)) {
-            breaks.push_back(MJD);
-          } else {
-            cerr << "Please list breaks in chronological order!" << endl;
-            cerr << line << endl;
-            exit(EXIT_FAILURE);
-          }
+          breaks.push_back(MJD);
         } else {
           cerr << "Could not understand break-line:" << line << endl;
           exit(EXIT_FAILURE);
@@ -245,6 +239,12 @@
         }
       }
     }
+
+    // sort offsets/breaks and erase duplicates
+    sort(offsets.begin(), offsets.end());
+    offsets.erase(std::unique(offsets.begin(), offsets.end()), offsets.end());
+    sort(breaks.begin(), breaks.end());
+    breaks.erase(std::unique(breaks.begin(), breaks.end()), breaks.end());
   }
 
 
@@ -335,7 +335,7 @@
           }
         }
         if (index_already_used==true) {
-          cout << "offset " << offsets[i] << " is already used" << endl;
+          cout << "offset " << fixed << offsets[i] << " is already used" << endl;
           offsets.erase(offsets.begin()+i);
         } else {
           index.push_back(j);
@@ -344,7 +344,7 @@
         }
       } else {
         cout << fixed
-             << "offset " << offsets[i] << " is outside time span ["
+             << "offset " << fixed << offsets[i] << " is outside time span ["
              << t[0] << ", " << t[m-1] << "]" << endl;
         offsets.erase(offsets.begin()+i);
       }
