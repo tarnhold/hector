@@ -131,9 +131,11 @@
       make_continuous(false);
     }
 
-    //--- Now that I have read both the offset information and the data,
-    //    I can remove trouble offsets (outside period, double counting)
-    clean_offsets();
+    //--- Now that I have read both the offset/break information and
+    //    the data, I can remove trouble offsets/breaks (outside period,
+    //    double counting, too close entries).
+    clean_offsets_breaks(offsets, "offset");
+    clean_offsets_breaks(breaks, "break");
 
     //--- Count gaps    
     Ngaps=0;
@@ -218,12 +220,6 @@
         }
       }
     }
-
-    // sort offsets/breaks and erase duplicates
-    sort(offsets.begin(), offsets.end());
-    offsets.erase(std::unique(offsets.begin(), offsets.end()), offsets.end());
-    sort(breaks.begin(), breaks.end());
-    breaks.erase(std::unique(breaks.begin(), breaks.end()), breaks.end());
   }
 
 
@@ -286,7 +282,8 @@
  *  that there is enough data in each sequence.
  */
 //--------------------------------------
-  void Observations::clean_offsets(void)
+  void Observations::clean_offsets_breaks(std::vector<double>& data,
+                                          const std::string& data_name)
 //--------------------------------------
   {
     using namespace std;
@@ -295,27 +292,31 @@
     const double   T=1.0/(fs*24.0*3600.0);
     const double   minT=min_elements*T; // mininum distance of offsets
 
-    if (offsets.size() < 1)
+    if (data.size() < 1)
       return;
 
 #ifdef DEBUG
-    for (j=0;j<offsets.size();j++)
-      cout << j << " : offset=" << fixed << offsets[j] << endl;
+    for (j=0;j<data.size();j++)
+      cout << j << " : " << data_name << "=" << fixed << data[j] << endl;
 #endif
+
+    // sort offsets/breaks and erase duplicates
+    sort(data.begin(), data.end());
+    data.erase(std::unique(data.begin(), data.end()), data.end());
 
     // first remove offsets outside time span
     i=0;
-    while (i<offsets.size()) {
-      if (offsets[i]<t[0] || offsets[i]>t[m-1]) {
-        cout << fixed
-             << "offset " << fixed << offsets[i] << " is outside time span ["
+    while (i<data.size()) {
+      if (data[i]<t[0] || data[i]>t[m-1]) {
+        cout << data_name << " "
+             << fixed << data[i] << " is outside time span ["
              << t[0] << ", " << t[m-1] << "]" << endl;
-        offsets.erase(offsets.begin()+i);
-      } else if (offsets[i]<t[0]+minT || offsets[i]>t[m-1]-minT) {
-        cout << fixed
-             << "offset " << fixed << offsets[i] << " is too close to start/end ["
+        data.erase(data.begin()+i);
+      } else if (data[i]<t[0]+minT || data[i]>t[m-1]-minT) {
+        cout << data_name << " "
+             << fixed << data[i] << " is too close to start/end ["
              << t[0] << ", " << t[m-1] << "]" << endl;
-        offsets.erase(offsets.begin()+i);
+        data.erase(data.begin()+i);
       } else {
         i++;
       }
@@ -323,13 +324,13 @@
 
     // filter offsets that are too close to each other
     i=1;
-    while (i<offsets.size()) {
+    while (i<data.size()) {
       // remove those whose distance is less than x sampling periods
-      if (offsets[i-1]+minT > offsets[i]) {
-        cout << fixed
-             << "offset " << fixed << offsets[i] << " is too close to previous one ["
-             << offsets[i-1] << "]" << endl;
-        offsets.erase(offsets.begin()+i);
+      if (data[i-1]+minT > data[i]) {
+        cout << data_name << " "
+             << fixed << data[i] << " is too close to previous one ["
+             << data[i-1] << "]" << endl;
+        data.erase(data.begin()+i);
       } else {
         i++;
       }
@@ -339,17 +340,17 @@
     i=0;
     size_t count=0;
     for (j=0;j<m;j++) {
-      if (t[j]>offsets[i] && i<offsets.size())
+      if (t[j]>data[i] && i<data.size())
       {
 #ifdef DEBUG
-        cout << "offset at " << fixed << offsets[i] << " has "
+        cout << data_name << " at " << fixed << data[i] << " has "
              << count << " elements" << endl;
 #endif
 
         if (count<min_elements) {
-          cout << fixed << "offset " << fixed << offsets[i]
+          cout << data_name << " " << fixed << data[i]
                << " has too less data [count: " << count << "]" << endl;
-          offsets.erase(offsets.begin()+i);
+          data.erase(data.begin()+i);
         } else {
           i++;
           count = 0;
@@ -361,8 +362,8 @@
     }
 
 #ifdef DEBUG
-    for (j=0;j<offsets.size();j++)
-      cout << j << " : offset=" << fixed << offsets[j] << endl;
+    for (j=0;j<data.size();j++)
+      cout << j << " : " << data_name << "=" << fixed << data[j] << endl;
 #endif
 
   }
