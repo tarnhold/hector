@@ -677,8 +677,14 @@ namespace {
       buff.str("");
     }
     for (j=0;j<n_offsets;j++) {
+      // correction values are set to non-zero at break points if
+      // there is a multitrend estimation
+      corr_pos = 0.0;
+      corr_vel = 0.0;
+
       if (estimate_multitrend && breaks.size()>0) {
         for (k=0;k<breaks.size();k++) {
+          // calculate offset correction value at break point
           if (fabs(offsets[j]-breaks[k])<TINY) {
             if (k==0) {
               corr_pos = theta[1]*(breaks[k]-t0);
@@ -691,9 +697,6 @@ namespace {
             }
           }
         }
-      } else {
-        corr_pos = 0.0;
-        corr_vel = 0.0;
       }
       buff << "offset at " << fixed << setw(10) << setprecision(4) << offsets[j];
       cout << values_formatted(buff.str(), theta[i]-corr_pos, error[i]+corr_vel, unit)
