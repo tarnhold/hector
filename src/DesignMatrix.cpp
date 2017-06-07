@@ -577,7 +577,7 @@ namespace {
            << setw(2) << day << ", "
            << setw(2) << hour << ":"
            << setw(2) << minute << ":"
-           << setw(2) << setprecision(3) << second << ")" << endl;
+           << setw(6) << setprecision(3) << second << ")" << endl;
       cout.fill(' ');
 
       if (degree_polynomial>0) {
