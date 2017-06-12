@@ -591,6 +591,9 @@ DesignMatrix* DesignMatrix::singleton = NULL;
 
 
 namespace {
+/*
+ * Formatted output string of parameter name, value, error and unit
+ */
 //------------------------------------------------------------------------
   std::string values_formatted(const std::string& name, double value,
                                     double error, const std::string &unit)
@@ -602,6 +605,33 @@ namespace {
        << setw(13) << setprecision(3) << value << " +/- "
        << setw(7)  << setprecision(3) << error << " "
        << unit;
+    return ss.str();
+  }
+
+
+/*
+ * Convert MJD to formatted date string YYYY-MM-DD HH:MM:SS.SSS
+ */
+//------------------------------------------------------------------------
+  std::string mjd2date_formatted(double mjd)
+//------------------------------------------------------------------------
+  {
+    using namespace std;
+    Calendar        calendar;
+    int             year,month,day,hour,minute;
+    double          second;
+    stringstream    ss;
+
+    calendar.compute_date(mjd,year,month,day,hour,minute,second);
+
+    ss << setfill('0');
+    ss << setw(4) << year << "/"
+       << setw(2) << month << "/"
+       << setw(2) << day << ", "
+       << setw(2) << hour << ":"
+       << setw(2) << minute << ":";
+    ss << fixed << setw(6) << setprecision(3) << second;
+
     return ss.str();
   }
 }
@@ -618,12 +648,11 @@ namespace {
   {
     using namespace std;
     const double   rad=tpi/360.0;
-    int            i,j,year,month,day,hour,minute;
+    int            i,j;
     size_t         k;
-    double         ds = 365.25,second,corr_pos = 0.0,corr_vel = 0.0,Amp,Pha,sigma_out;
+    double         ds=365.25,corr_pos=0.0,corr_vel=0.0,Amp,Pha,sigma_out;
     double         *xhat,*theta_dummy;
     fstream        fp;
-    Calendar       calendar;
     ostringstream  buff;
 
     i=0;
@@ -637,17 +666,8 @@ namespace {
       i += 2+n_breaks;
 
     } else {
-      calendar.compute_date(th,year,month,day,hour,minute,second);
       cout << values_formatted("bias", theta[0]+median, error[0], unit)
-           << " (at ";
-      cout.fill('0');
-      cout << setw(4) << year << "/"
-           << setw(2) << month << "/"
-           << setw(2) << day << ", "
-           << setw(2) << hour << ":"
-           << setw(2) << minute << ":"
-           << setw(6) << setprecision(3) << second << ")" << endl;
-      cout.fill(' ');
+           << " (at " << mjd2date_formatted(th) << ")" << endl;
 
       if (degree_polynomial>0) {
         cout << values_formatted("trend", theta[1]*ds, error[1]*ds, unit)
