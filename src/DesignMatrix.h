@@ -63,7 +63,6 @@
 
         void    get_H(int& n_, double **H_); 
         void    get_F(double **F_); 
-        int     get_offset_index(void) {return index_offset;};
         void    show_results(double *theta, double *error);
         void    compute_xhat(const double *theta);
     };

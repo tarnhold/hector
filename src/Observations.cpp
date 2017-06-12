@@ -1033,30 +1033,4 @@
   }
 
 
-
-/*! Add offset
- */
-//-----------------------------------------
-  void Observations::add_offset(double MJD)
-//-----------------------------------------
-  {
-    offsets.push_back(MJD);
-  }
-
-
-
-/*! Add offset
- */
-//--------------------------------------------------------
-  void Observations::change_offset(size_t column, double MJD)
-//--------------------------------------------------------
-  {
-    using namespace std;
-    if (column>=offsets.size()) {
-      cerr << "Invalid column specification: " << column << endl;
-      exit(EXIT_FAILURE);
-    }
-    offsets[column] = MJD;
-  }
-
 /* vim:set shiftwidth=2 softtabstop=2 expandtab: */

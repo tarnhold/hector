@@ -70,8 +70,6 @@
         void   get_breaks(std::vector<double>& breaks_);
         void   get_postseismiclog(std::vector<LogEntry>& postseismiclog_);
         void   get_postseismicexp(std::vector<ExpEntry>& postseismicexp_);
-        void   add_offset(double MJD);
-        void   change_offset(size_t column, double MJD);
     };
 
   #endif
