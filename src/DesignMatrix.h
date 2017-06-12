@@ -30,7 +30,7 @@
         int                    n_postseismiclog,n_postseismicexp;
         int                    degree_polynomial,n_channels,index_offset;
         int                    varyingseasonal_N,index_seasonal;
-        double                 dt,*H,*F,*periods,th,t0,*t;
+        double                 dt,*H,*F,*periods,th,t0,*t,median;
         std::vector<double>    offsets,breaks;
         std::vector<LogEntry>  postseismiclog;
         std::vector<ExpEntry>  postseismicexp;
