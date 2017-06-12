@@ -42,12 +42,12 @@
     class Observations
     {
       private:
-        const double           NaN;
-        int                    Ngaps;
-        double                 fs,scale_factor;
-        bool                   PSMSL_monthly,interpolate_data;
-        bool                   write_empty_records;
-        void                   (Observations::*read_observations)(std::string 
+        const double          NaN;
+        int                   Ngaps;
+        double                fs,scale_factor,median;
+        bool                  PSMSL_monthly,interpolate_data;
+        bool                  write_empty_records;
+        void                  (Observations::*read_observations)(std::string
 								     filename);
         std::vector<double>    t,x,xhat,offsets,breaks;
         std::vector<LogEntry>  postseismiclog;
@@ -80,11 +80,13 @@
         double estimate_lag1(void);
         void   make_continuous(bool interpolate);
         void   remove_gaps(void);
+        void   remove_median(void);
         int    number_of_gaps(void) {return Ngaps;};
         int    number_of_offsets(void) {return offsets.size();};
         int    number_of_observations(void) {return t.size();};
         void   set_xhat(const double *xhat_);
         void   set_one_x(int index, double value);
+        double get_median(void) {return median;};
         void   get_offsets(std::vector<double>& offsets_);
         void   get_breaks(std::vector<double>& breaks_);
         void   get_postseismiclog(std::vector<LogEntry>& postseismiclog_);

@@ -50,7 +50,8 @@
  * the file type
  */
 //---!!-------------------------------------------
-  Observations::Observations(void) : NaN(sqrt(-1))
+  Observations::Observations(void)
+    : NaN(sqrt(-1)), median(0.0)
 //---!!-------------------------------------------
   {
     using namespace std;
@@ -125,6 +126,7 @@
 
     //--- read the data
     (*this.*read_observations)(filename);
+    remove_median();
 
     //--- For the handling of the gaps I need to know some things
     try {
@@ -820,11 +822,11 @@
     for (i=0;i<t.size();i++) {
       if (xhat.size()==0) { 
         fp << setprecision(6) << fixed << t[i] << "  "
-           << x[i] << endl;
+           << x[i]+median << endl;
        } else {
          if (!std::isnan(x[i])) {
           fp << setprecision(6) << fixed << t[i] << "  "
-             << x[i] << "  " << xhat[i] << endl;
+             << x[i]+median << "  " << xhat[i]+median << endl;
          } else {
            if (write_empty_records) {
              // just write epoch with no data
@@ -953,6 +955,32 @@
 #ifdef DEBUG
     cout << "after  m: " << t.size() << endl;
 #endif
+  }
+
+
+
+/*! Reduce observation data by its median value, to get small
+ *  values. This helps to handle large value data without getting
+ *  numerical problems.
+ */
+//------------------------------------
+  void Observations::remove_median(void)
+//------------------------------------
+  {
+    using namespace std;
+    size_t          i,m=x.size();
+    vector<double>  q;
+
+    for (i=0;i<m;i++)
+      q.push_back(x[i]);
+    sort(q.begin(),q.end());
+
+    median = q[int(0.5*m)];
+
+    for (i=0;i<m;i++) {
+      if (!std::isnan(x[i]))
+        x[i] -= median;
+    }
   }
 
 

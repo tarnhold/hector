@@ -45,7 +45,7 @@ DesignMatrix* DesignMatrix::singleton = NULL;
 
 //---!!-------------------------------------------------
   DesignMatrix::DesignMatrix(void) : tpi(8.0*atan(1.0)),
-			             pi(0.5*tpi)
+			        pi(0.5*tpi), median(0.0)
 //---!!-------------------------------------------------
   {
     using namespace std;
@@ -70,6 +70,7 @@ DesignMatrix* DesignMatrix::singleton = NULL;
     //--- Determine some general properties
     observations.get_values(m,&t,&x);
     Ngaps = observations.number_of_gaps();
+    median = observations.get_median();
     dt = 1.0/(24.0*3600.0*observations.get_fs()); // unit is MJD days!!!
     t0 = t[0];
 #ifdef DEBUG
@@ -628,7 +629,7 @@ namespace {
     i=0;
 
     if (estimate_multitrend==true) {
-      cout << values_formatted("bias", theta[0], error[0], unit) << endl;
+      cout << values_formatted("bias", theta[0]+median, error[0], unit) << endl;
       for (j=0;j<=n_breaks;j++) {
         cout << values_formatted("trend", theta[1+j]*ds, error[1+j]*ds, unit)
              << "/year" << endl;
@@ -637,7 +638,7 @@ namespace {
 
     } else {
       calendar.compute_date(th,year,month,day,hour,minute,second);
-      cout << values_formatted("bias", theta[0], error[0], unit)
+      cout << values_formatted("bias", theta[0]+median, error[0], unit)
            << " (at ";
       cout.fill('0');
       cout << setw(4) << year << "/"
