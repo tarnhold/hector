@@ -134,8 +134,10 @@
     //--- Now that I have read both the offset/break information and
     //    the data, I can remove trouble offsets/breaks (outside period,
     //    double counting, too close entries).
+    cout << endl << "Cleaning offsets and breaks" << endl;
     clean_offsets_breaks(offsets, "offset");
     clean_offsets_breaks(breaks, "break");
+    cout << endl;
 
     //--- Count gaps    
     Ngaps=0;

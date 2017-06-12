@@ -46,6 +46,7 @@
       control.get_string("PhysicalUnit",unit);
       control.get_name_list("NoiseModels",noisemodel,Nmodels);
 //---------
+      cout << "Noise Model" << endl;
       for (i=0;i<Nmodels;i++) cout << i << ") " << noisemodel[i] << endl;
 //---------
     } 
@@ -121,6 +122,8 @@
      }
      cout << "Nparam total = " << Nparam << endl;
 #endif
+
+    cout << endl;
   }   
   
 
