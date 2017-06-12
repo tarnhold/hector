@@ -344,7 +344,7 @@
     i=0;
     size_t count=0;
     for (j=0;j<m;j++) {
-      if (t[j]>data[i] && i<data.size())
+      if (i<data.size() && t[j]>data[i])
       {
 #ifdef DEBUG
         cout << data_name << " at " << fixed << data[i] << " has "
