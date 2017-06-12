@@ -625,9 +625,9 @@ namespace {
     calendar.compute_date(mjd,year,month,day,hour,minute,second);
 
     ss << setfill('0');
-    ss << setw(4) << year << "/"
-       << setw(2) << month << "/"
-       << setw(2) << day << ", "
+    ss << setw(4) << year << "-"
+       << setw(2) << month << "-"
+       << setw(2) << day << " "
        << setw(2) << hour << ":"
        << setw(2) << minute << ":";
     ss << fixed << setw(6) << setprecision(3) << second;
@@ -789,21 +789,23 @@ namespace {
       }
       buff << "offset at " << fixed << setw(10) << setprecision(4) << offsets[j];
       cout << values_formatted(buff.str(), theta[i]-corr_pos, error[i]+corr_vel, unit)
-           << endl;
+           << " (at " << mjd2date_formatted(offsets[j]) << ")" << endl;
       buff.str("");
       i++;
     }
     for (j=0;j<n_postseismiclog;j++) {
       buff << "log relax at " << setw(10) << setprecision(4) << postseismiclog[j].MJD
            << " (T=" << fixed << setw(8) << setprecision(2) << postseismiclog[j].T << ")";
-      cout << values_formatted(buff.str(), theta[i], error[i], unit) << endl;
+      cout << values_formatted(buff.str(), theta[i], error[i], unit)
+           << " (at " << mjd2date_formatted(postseismiclog[j].MJD) << ")" << endl;
       buff.str("");
       i++;
     }
     for (j=0;j<n_postseismicexp;j++) {
       buff << "exp relax at " << setw(10) << setprecision(4) << postseismicexp[j].MJD
            << " (T=" << fixed << setw(8) << setprecision(2) << postseismicexp[j].T << ")";
-      cout << values_formatted(buff.str(), theta[i], error[i], unit) << endl;
+      cout << values_formatted(buff.str(), theta[i], error[i], unit)
+           << " (at " << mjd2date_formatted(postseismicexp[j].MJD) << ")" << endl;
       buff.str("");
       i++;
     }
