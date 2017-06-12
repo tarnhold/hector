@@ -132,6 +132,8 @@
   NoiseModel::~NoiseModel(void)
 //--!!-------------------------
   {
+    int i;
+
     if (h!=NULL) { //-- This implies also F_h != NULL
       fftw_free (h);
       fftw_free (w);
@@ -141,6 +143,8 @@
       fftw_destroy_plan ( plan_backward );
     }
     if (Nmodels>0) {
+      for(i=0; i<Nmodels; i++)
+        delete modelIndv[i];
       delete[] modelIndv;
       delete[] NparamIndv;
       delete[] phi;
