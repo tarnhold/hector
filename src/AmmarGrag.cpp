@@ -169,6 +169,7 @@
     if (t2!=NULL)       delete[] t2;
     if (G1!=NULL)       delete[] G1;
     if (G2!=NULL)       delete[] G2;
+    if (M!=NULL)        delete[] M;
     if (M2!=NULL)       delete[] M2;
     if (l1!=NULL)       delete[] l1;
     if (l2!=NULL)       delete[] l2;
