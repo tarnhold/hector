@@ -559,7 +559,7 @@ namespace {
     ss << setfill('0');
     ss << setw(4) << year << "-"
        << setw(2) << month << "-"
-       << setw(2) << day << ", "
+       << setw(2) << day << " "
        << setw(2) << hour << ":"
        << setw(2) << minute << ":";
     ss << fixed << setw(6) << setprecision(3) << second;
