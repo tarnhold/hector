@@ -32,9 +32,9 @@
       public:
         long int  julday(int year, int month, int day);
         void      compute_date(double MJD, int& year, int& month, int& day,
-				       int& hour, int& minute, double& second);
+                                      int& hour, int& minute, double& second);
         double    compute_MJD(int year, int month, int day, int hour, 
-						    int minute, double second);
+                                                   int minute, double second);
     };
 
   #endif
