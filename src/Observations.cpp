@@ -387,19 +387,22 @@
 
     using namespace std;
     fp << "# sampling period " << 1.0/(fs*24.0*3600.0) << endl;
+    fp << fixed;
     for (i=0;i<offsets.size();i++) {
-      fp << "# offset " << offsets[i] << endl;
+      fp << "# offset " << setprecision(10) << offsets[i] << endl;
     }
     for (i=0;i<breaks.size();i++) {
-      fp << "# break " << breaks[i] << endl;
+      fp << "# break " << setprecision(10) << breaks[i] << endl;
     }
     for (i=0;i<postseismiclog.size();i++) {
       logdummy = postseismiclog[i];
-      fp << "# log " << logdummy.MJD << "  " << logdummy.T << endl;
+      fp << "# log " << setprecision(10) << logdummy.MJD << "  "
+         << setprecision(2) << logdummy.T << endl;
     }
     for (i=0;i<postseismicexp.size();i++) {
       expdummy = postseismicexp[i];
-      fp << "# exp " << expdummy.MJD << "  " << expdummy.T << endl;
+      fp << "# exp " << setprecision(10) << expdummy.MJD << "  "
+         << setprecision(2) << expdummy.T << endl;
     }
   }
 

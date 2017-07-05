@@ -42,8 +42,8 @@
       printf ("day    : %4d\n",day);
       printf ("hour   : %4d\n",hour);
       printf ("minute : %4d\n",minute);
-      printf ("second : %lf\n",second);
-      printf ("MJD    : %lf\n",MJD);
+      printf ("second : %.5lf\n",second);
+      printf ("MJD    : %.10lf\n",MJD);
     }
     return EXIT_SUCCESS;
   }

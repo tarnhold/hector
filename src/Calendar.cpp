@@ -19,6 +19,17 @@
 // Subroutines
 //==============================================================================
 
+namespace
+{
+  /*
+   * Round double to decimal place given by precision.
+   */
+  double round_double(double value, double precision)
+  {
+    return floor((value * pow(10, precision) + 0.5)) / pow(10, precision);
+  }
+}
+
 //--------------------------------------------------------------------
   void Calendar::caldat(long int jul, int& year, int& month, int& day)
 /*--------------------------------------------------------------------
@@ -101,16 +112,22 @@
                                        int& hour, int& minute, double& second)
 //----------------------------------------------------------------------------
   {
+    using namespace std;
     long int     J;
-    double       f;
+    double       f,ds;
 
     J      = (long int)(MJD + 2400001.0);
     caldat(J,year,month,day);
-    f      = 24.0*(MJD-floor(MJD));
-    hour   = int(f);
-    f      = 60.0*(f - hour);
-    minute = int(f);
-    second = 60.0*(f - minute);
+
+    // round second to 5th decimal place
+    ds = 24.0*3600.0*(MJD-floor(MJD));
+    f = round_double(ds, 5);
+
+    hour   = int(f / 3600.0);
+    f     -= hour*3600.0;
+    minute = int(f / 60.0);
+    f     -= minute*60.0;
+    second = f;
   }
 
 
@@ -119,7 +136,7 @@
  */
 //---------------------------------------------------------------------------
   double Calendar::compute_MJD(int year, int month, int day, int hour,
-						   int minute, double second)
+                                                  int minute, double second)
 //---------------------------------------------------------------------------
   {
     long int  J;
