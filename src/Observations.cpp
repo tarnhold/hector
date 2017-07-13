@@ -670,7 +670,7 @@
     bool          first_line=true,found_fs=false;
     char          line[120];
     string        component_name;
-    int           decimal,remainder,component,i;
+    int           decimal,remainder=0,component,i;
     double        MJD,obs[3],MJD_old = 0.0,yearfraction,dt;
     Control       &control = Control::getInstance();
 
