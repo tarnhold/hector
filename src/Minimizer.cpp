@@ -77,6 +77,7 @@
 //---------------------------
   {
     int           i;
+    const size_t  MAX_ITER=1500;
     double        sigma_eta,FTOL=1.0e-4;
     NoiseModel    &noisemodel  = NoiseModel::getInstance();
     Likelihood    &likelihood  = Likelihood::getInstance();
@@ -146,11 +147,11 @@
           printf("%11.5f ",gsl_vector_get(s->x,i));
         }
         printf("  f()= %10.6f  size=%.4f\n",s->fval, size);
-      } while (status == GSL_CONTINUE && iter < 1500);
+      } while (status == GSL_CONTINUE && iter < MAX_ITER);
 
       //--- Sanity check    
-      if (iter==500) {
-        cerr << "Did not converge!!" << endl;
+      if (iter==MAX_ITER) {
+        cerr << "Error: Did not converge!" << endl;
         exit(EXIT_FAILURE);
       }
  
