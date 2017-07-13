@@ -28,7 +28,7 @@
         size_t                 Ngaps;
         int                    n,m,n_periodic_signals,n_offsets,n_breaks;
         int                    n_postseismiclog,n_postseismicexp;
-        int                    degree_polynomial,n_channels,index_offset;
+        int                    degree_polynomial,n_channels;
         int                    varyingseasonal_N,index_seasonal;
         double                 dt,*H,*F,*periods,th,t0,*t,median;
         std::vector<double>    offsets,breaks;
