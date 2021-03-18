@@ -27,7 +27,7 @@
         const double          NaN;
         int                   Ngaps;
         double                fs,scale_factor,median;
-        bool                  PSMSL_monthly,interpolate_data;
+        bool                  interpolate_data;
         bool                  write_empty_records;
         void                  (Observations::*read_observations)(std::string 
 								     filename);
