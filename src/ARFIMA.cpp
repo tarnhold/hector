@@ -320,7 +320,7 @@
   {
     using namespace std;
     int                i,j,k,N,h_max;
-    complex<double>    scale,*rho=NULL,*zeta=NULL,*G=NULL;
+    complex<double>    *rho=NULL,*zeta=NULL,*G=NULL;
     double             offset,*psi=NULL,*FI_fraction=NULL;
     double	       **C=NULL,a_max,c_max;
     HyperGeo           hypergeo;

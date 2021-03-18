@@ -30,7 +30,6 @@
   {
     using namespace std;
     double            T;
-    complex<double>   a,b,c,w;
 
     //--- Need to know the standard deviation of epsilon (the white noise)
     cout << "Enter the standard deviation of the driving noise: ";
