@@ -64,7 +64,7 @@
       //--- Just avoid trouble
       memset(C,0.0,N*N*sizeof(double));
     }
-    catch (bad_alloc) {
+    catch (const bad_alloc &) {
       cerr << "FullCov: Need more memory for variables!" << endl;
       exit(EXIT_FAILURE);
     }
