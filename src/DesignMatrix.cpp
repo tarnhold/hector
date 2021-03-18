@@ -267,7 +267,7 @@ DesignMatrix* DesignMatrix::singleton = NULL;
       if (Ngaps>0)  F = new double[Ngaps*m];
       else          F = NULL;
     }
-    catch(bad_alloc) {
+    catch(const bad_alloc &) {
       cerr << "Need more memory to store Design Matrix" << endl;
       cerr << "m=" << m << ", n=" << n << ", Ngaps=" << Ngaps << endl;
       exit(EXIT_FAILURE);

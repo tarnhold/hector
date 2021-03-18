@@ -241,7 +241,7 @@
       Y  = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * (L/2+1));
       *G = new double[L/2+1]; // spectrum (periodogram) amplitude
       *f = new double[L/2+1]; // frequencies, used for plotting
-    } catch(bad_alloc) {
+    } catch(const bad_alloc &) {
       cerr << "Not enough memory to hold all data...." << endl;
       exit(EXIT_FAILURE);
     }
