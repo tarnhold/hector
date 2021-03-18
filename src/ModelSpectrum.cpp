@@ -40,7 +40,6 @@
   {
     using namespace std;
     double            T;
-    complex<double>   a,b,c,w;
 
     cout << "---------------" << endl;
     cout << "ModelSpectrum" << endl;
