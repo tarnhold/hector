@@ -152,14 +152,14 @@ estimatetrend : EstimateTrend.cpp Control.o Minimizer.o \
 	$(noisemodel_objects) $(likelihood_objects) Observations.o \
 	DesignMatrix.o HyperGeo.o Calendar.o  \
 	 -DVERSION=$(VERSION) -DSUBVERSION=$(SUBVERSION) \
-	$(INC_DIR) $(LIB_DIR) $(ATLAS) $(FFTW) $(GSL) $(ATLAS) $(ATLAS) \
+	$(INC_DIR) $(LIB_DIR) $(ATLAS) $(FFTW) $(GSL) \
 	-o estimatetrend
 
 removeoutliers : RemoveOutliers.cpp RemoveOutliers.h \
 	Observations.o DesignMatrix.o Control.o Calendar.o
 	$(CPP) $(CPPFLAGS) RemoveOutliers.cpp Observations.o DesignMatrix.o \
 	Control.o Calendar.o -DVERSION=$(VERSION) -DSUBVERSION=$(SUBVERSION) \
-	$(INC_DIR) $(LIB_DIR) $(ATLAS) $(GSL) $(ATLAS) \
+	$(INC_DIR) $(LIB_DIR) $(ATLAS) $(GSL) \
 	-o removeoutliers
 
 modelspectrum : ModelSpectrum.cpp ModelSpectrum.h \
@@ -168,7 +168,7 @@ modelspectrum : ModelSpectrum.cpp ModelSpectrum.h \
 	$(CPP) $(CPPFLAGS) ModelSpectrum.cpp $(noisemodel_objects) \
 	$(likelihood_objects) DesignMatrix.o -DSUBVERSION=$(SUBVERSION) \
         Control.o Observations.o HyperGeo.o Calendar.o -DVERSION=$(VERSION) \
-	$(INC_DIR) $(LIB_DIR) $(ATLAS) $(FFTW) $(GSL) $(ATLAS) \
+	$(INC_DIR) $(LIB_DIR) $(ATLAS) $(FFTW) $(GSL) \
         -o modelspectrum
 
 estimatespectrum : EstimateSpectrum.cpp Observations.o Control.o \
@@ -184,7 +184,7 @@ simulatenoise : SimulateNoise.cpp SimulateNoise.h $(noisemodel_objects) \
 	$(CPP) $(CPPFLAGS) SimulateNoise.cpp $(noisemodel_objects) \
 	$(likelihood_objects) DesignMatrix.o Observations.o Calendar.o \
         Control.o HyperGeo.o -DVERSION=$(VERSION) -DSUBVERSION=$(SUBVERSION) \
-        $(INC_DIR) $(LIB_DIR) $(ATLAS) $(FFTW) $(GSL) $(ATLAS) \
+        $(INC_DIR) $(LIB_DIR) $(ATLAS) $(FFTW) $(GSL) \
         -o simulatenoise
 
 date2mjd : date2MJD.cpp Calendar.o
@@ -200,7 +200,7 @@ findoffset : FindOffset.cpp Control.o Minimizer.o \
 	$(noisemodel_objects) $(likelihood_objects) Observations.o \
 	DesignMatrix.o HyperGeo.o Calendar.o  \
 	 -DVERSION=$(VERSION) -DSUBVERSION=$(SUBVERSION) \
-	$(INC_DIR) $(LIB_DIR) $(ATLAS) $(FFTW) $(GSL) $(ATLAS) \
+	$(INC_DIR) $(LIB_DIR) $(ATLAS) $(FFTW) $(GSL) \
 	-o findoffset
 
 #---------- Subroutines
