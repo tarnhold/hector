@@ -279,7 +279,7 @@ DesignMatrix* DesignMatrix::singleton = NULL;
       fp.close();
 
       //--- Sanity check
-      if (m>multivariate.size()) {
+      if (static_cast<size_t>(m)>multivariate.size()) {
         cerr << "There are " << m << " observations but only " 
              << multivariate.size()
              << " rows in the multivariate file!" << endl;
