@@ -213,7 +213,7 @@
   {
     using namespace std;
     vector<double>  offsets;
-    int             j,k,n_offsets,offset_index,N;
+    int             j,k,n_offsets,offset_index = 0,N;
     double          t0,t1,lambda,fact_k;
     double          lnf_s,lnf_theta;
     DesignMatrix    *designmatrix = DesignMatrix::getInstance();
