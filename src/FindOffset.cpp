@@ -46,8 +46,10 @@
     //--- Open correct control file
     if (argc==1) {
       Control &control = Control::getInstance("findoffset.ctl");
+      (void) control;
     } else if (argc==2) {
       Control &control = Control::getInstance(argv[1]);
+      (void) control;
     } else {
       cerr << "correct usage: findoffset [controlfile.ctl]" << endl;
       exit(EXIT_FAILURE);

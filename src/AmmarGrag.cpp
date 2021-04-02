@@ -470,7 +470,6 @@
     using namespace std;
     vector<double>             offsets;
     vector< vector<double> >   off_omp;
-    NoiseModel      &noisemodel=NoiseModel::getInstance();
     int             i,j,l,column,ny,nyc,*ipiv,k,n_offsets,offset_index,N;
     double          product,time0,time1,lnf_s,lnf_theta;
     bool            already_used;
