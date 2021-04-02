@@ -1014,7 +1014,7 @@
   void Observations::get_ssetanh(std::vector<TanhEntry>& ssetanh_)
 //----------------------------------------------------------------
   {
-    int   i;
+    size_t i;
 
     ssetanh_.clear();
     for (i=0;i<ssetanh.size();i++) {

@@ -54,7 +54,7 @@ DesignMatrix* DesignMatrix::singleton = NULL;
     bool                      estimate_offsets,estimate_postseismic;
     bool                      estimate_sse;
     int                       i,j,k,l,year,month,day,hour,minute,Nnumbers=0;
-    int                       i_multi;
+    size_t                    i_multi;
     double                    *x,second,MJD,T,J,phi,s,T0,T1,coeff;
     string                    periodic_signals[40],numbers[40];
     Observations              &observations=Observations::getInstance();
