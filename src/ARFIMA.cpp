@@ -334,7 +334,7 @@
     using namespace std;
     int                i,j,k,N,h_max;
     complex<double>    scale,*rho=NULL,*zeta=NULL,*G=NULL;
-    double             offset,dummy,*psi=NULL,*FI_fraction=NULL;
+    double             offset,*psi=NULL,*FI_fraction=NULL;
     double	       **C=NULL,a_max,c_max;
     HyperGeo           hypergeo;
 
@@ -481,7 +481,6 @@
 //------------------------------------------------------------------
   {
     double  d,*AR,*MA;
-    int     i;
 
     //--- To make things more readable, rewrite param as AR,d,MA
     AR = &param[0];

@@ -61,7 +61,6 @@
 
     //--- Here the rest of the variable declarations occur
     fstream        fp;
-    const double   TINY=1.0e-6;
     Minimizer      minimizer;
     Likelihood     &likelihood=Likelihood::getInstance();
     DesignMatrix   *designmatrix = DesignMatrix::getInstance();

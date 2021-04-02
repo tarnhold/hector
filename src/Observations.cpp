@@ -54,7 +54,7 @@
   {
     using namespace std;
     string    datafile,filename,directory;
-    int       i,n,choice;
+    int       i;
     Control   &control = Control::getInstance();
 
     //--- To ensure the right sampling frequency is read, fs=NaN at first
@@ -393,10 +393,8 @@
     fstream   fp;
     string    fn(filename);
     double    fraction,MJD;
-    int       MSL,flag,year,yearly,missing,month;
+    int       MSL,flag,year,missing,month;
     char      line[80];
-    long int  J;
-    Calendar  calendar;
 
     //--- Open file
     fs = 1.0/(30.4375*24.0*3600.0); // sampling frequency (Hz)

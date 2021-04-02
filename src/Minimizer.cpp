@@ -103,7 +103,7 @@
 //---------------------------
   {
     int           i;
-    double        sigma_eta,ln_det_C,*theta=NULL,FTOL=1.0e-7;
+    double        sigma_eta,FTOL=1.0e-7;
     NoiseModel    &noisemodel  = NoiseModel::getInstance();
     Likelihood    &likelihood  = Likelihood::getInstance();
 
@@ -297,9 +297,8 @@
   void Minimizer::compute_inv_Fisher(double *C)
 //---------------------------------------------
   {
-    int           i,j,info,k;
-    char          Up='L';
-    const double  ds=1.0e-3,TINY=1.0e-6;
+    int           i,j;
+    const double  ds=1.0e-3;
     double        lnL_min,lnL[4],*X=NULL;
     Likelihood    &likelihood   = Likelihood::getInstance();
     NoiseModel    &noisemodel   = NoiseModel::getInstance();

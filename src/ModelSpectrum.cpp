@@ -39,8 +39,7 @@
 //---!!--------------------------------------------------
   {
     using namespace std;
-    int               i,j;
-    double            T,*theta;
+    double            T;
     complex<double>   a,b,c,w;
 
     cout << "---------------" << endl;
@@ -69,7 +68,7 @@
     using namespace std;
     const int   N=500;
     int         i,choice,Nparam;
-    double      dlambda,lambda,*G,*f,s,freq[2],*params_fixed=NULL;
+    double      *G,*f,s,freq[2],*params_fixed=NULL;
     NoiseModel  &noisemodel=NoiseModel::getInstance();
     fstream     fp;
     string      filename;

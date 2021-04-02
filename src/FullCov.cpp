@@ -121,8 +121,8 @@
   {
     NoiseModel  &noisemodel=NoiseModel::getInstance();
     int         i,i0,i1,j0,j1;
-    int         j,*ipiv;
-    double      product,lambda,lambda_min,lambda_max;
+    int         *ipiv;
+    double      product;
 
     using namespace std;
     //--- Create the Covariance matrix. 

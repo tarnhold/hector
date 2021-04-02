@@ -51,7 +51,7 @@
 			       EPS(1.0e-6)
 //---!!-------------------------------------------
   {
-    int           i,j,k,Status,nyc,offset;
+    int           i,j,nyc,offset;
 
     using namespace std;
     //--- Make use of the fact that FFT can be performed in parallel
@@ -206,7 +206,7 @@
   double AmmarGrag::step1(double *gamma_x, double **l1, double **l2)
 //-------------------------------------------------------------------
   {
-    int      i,j,Status;
+    int      i;
     double   delta,ln_determinant_C,*dummy=NULL,gamma;
  
     using namespace std;
@@ -321,9 +321,8 @@
 //---------------------------------------------------
   {
     NoiseModel   &noisemodel=NoiseModel::getInstance();
-    int          i,j,*ipiv,k;
-    double       product,ms;
-    clock_t      start,end,start2,end2;
+    int          i,*ipiv,k;
+    double       product;
 
     using namespace std;
     //--- Create pivots (check which is larger n or Ngaps)
@@ -473,8 +472,7 @@
     vector< vector<double> >   off_omp;
     NoiseModel      &noisemodel=NoiseModel::getInstance();
     int             i,j,l,column,ny,nyc,*ipiv,k,n_offsets,offset_index,N;
-    double          product,ms,time0,time1,lnf_s,lnf_theta;
-    clock_t         start,end,start2,end2;
+    double          product,time0,time1,lnf_s,lnf_theta;
     bool            already_used;
     DesignMatrix    *designmatrix = DesignMatrix::getInstance();
     Observations    &observations = Observations::getInstance();
