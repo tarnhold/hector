@@ -38,7 +38,7 @@
     {
       private:
         const double            tpi,LARGE,EPS;
-        int                     max_order,Nthreads,ny,*index;
+        int                     Nthreads,ny,*index;
         double                  *A1,*A2,*y1,*y2,*G1,*G2,*l1,*l2,*gamma_x;
         double                  *dummy,*Qy,*QA,*Qt,*M,*M2,*t1,*t2;
         fftw_complex            *F_H,*F_x,*F_l1,*F_l2,*F_dummy;
