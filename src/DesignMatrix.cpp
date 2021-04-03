@@ -50,9 +50,11 @@ DesignMatrix* DesignMatrix::singleton = NULL;
   {
     using namespace std;
     fstream                   fp;
+    ofstream                  myfile;
     bool                      estimate_offsets,estimate_postseismic;
+    bool                      estimate_sse;
     int                       i,j,k,l,year,month,day,hour,minute,Nnumbers=0;
-    int                       i_gap;
+    int                       i_multi;
     double                    *x,second,MJD,T,J,phi,s,f,T0,T1,coeff;
     string                    periodic_signals[40],numbers[40];
     Observations              &observations=Observations::getInstance();
@@ -99,7 +101,7 @@ DesignMatrix* DesignMatrix::singleton = NULL;
       n_breaks = breaks.size();
       n        = 2+n_breaks;
     } else {
-      //--- One can also fit polynomials of higher degrees
+      //--- Janusz and Anna want to investigate higher degrees
       try {
         degree_polynomial = control.get_int("DegreePolynomial");
       }
@@ -107,8 +109,8 @@ DesignMatrix* DesignMatrix::singleton = NULL;
         cout << "No Polynomial degree set, using offset + linear trend" << endl;
         degree_polynomial = 1;
       }
-      if (degree_polynomial<0 || degree_polynomial>12) {
-        cerr << "Only polynomial degrees  between 0 and 12 are allowed" << endl;
+      if (degree_polynomial<0 || degree_polynomial>6) {
+        cerr << "Only polynomial degrees  between 0 and 6 are allowed" << endl;
         exit(EXIT_FAILURE);
       }
       n = degree_polynomial+1;
@@ -116,7 +118,7 @@ DesignMatrix* DesignMatrix::singleton = NULL;
 
     //--- Do we need to include seasonal signal
     try {
-      varying_seasonal = control.get_bool("varyingseasonal");
+      varying_seasonal = control.get_bool("estimatevaryingseasonal");
     }
     catch (exception &e) {
       varying_seasonal = false;
@@ -189,6 +191,10 @@ DesignMatrix* DesignMatrix::singleton = NULL;
       exit(EXIT_FAILURE);
     }
     if (estimate_offsets==true) {
+      //--- For the prior it is convenient to know where the estimated
+      //    sizes are stored in vector param.
+      index_offset = n;
+
       observations.get_offsets(offsets);
       n_offsets  = offsets.size();
       n         += n_offsets;
@@ -215,6 +221,21 @@ DesignMatrix* DesignMatrix::singleton = NULL;
       n_postseismicexp = 0;
     }
 
+    //--- Check for slow slip event modelling
+    try {
+      estimate_sse = control.get_bool("estimateslowslipevent");
+    }
+    catch (exception &e) {
+      estimate_sse=false;
+    }
+    if (estimate_sse==true) {
+      observations.get_ssetanh(ssetanh);
+      n_ssetanh  = ssetanh.size();
+      n         += n_ssetanh;
+    } else {
+      n_ssetanh  = 0;
+    }
+
     //--- Do we need to include a geophysical signals in matrix H?
     try {
       estimate_multivariate = control.get_bool("estimatemultivariate");
@@ -222,7 +243,6 @@ DesignMatrix* DesignMatrix::singleton = NULL;
     catch (exception &e) {
       estimate_multivariate=false;
     }
-
     if (estimate_multivariate==false) {
       n_channels=0; //--- Remember that we have no extra channels!
     } else {
@@ -261,8 +281,8 @@ DesignMatrix* DesignMatrix::singleton = NULL;
       fp.close();
 
       //--- Sanity check
-      if (m-Ngaps!=multivariate.size()) {
-        cerr << "There are " << m-Ngaps << "observations but " 
+      if (m>multivariate.size()) {
+        cerr << "There are " << m << " observations but only " 
              << multivariate.size()
              << " rows in the multivariate file!" << endl;
         exit(EXIT_FAILURE);
@@ -313,7 +333,7 @@ DesignMatrix* DesignMatrix::singleton = NULL;
     }
 
     //--- Construct the design matrix H
-    i_gap=0;
+    i_multi = 0;
     for (i=0;i<m;i++) {
       if (estimate_multitrend==true) {
         //--- multi-trend 
@@ -387,6 +407,7 @@ DesignMatrix* DesignMatrix::singleton = NULL;
       }
       j += n_offsets;
 
+      //--- Post-seismic stuff
       for (l=0;l<n_postseismiclog;l++) {
         MJD = postseismiclog[l].MJD;
         T   = postseismiclog[l].T;
@@ -399,22 +420,56 @@ DesignMatrix* DesignMatrix::singleton = NULL;
         if (t[i]+TINY>MJD) H[i + (j+l)*m] = 1.0 - exp(-(t[i]-MJD)/T);
       }
       j += n_postseismicexp;
+
+      //--- Slow Slip event
+      for (l=0;l<n_ssetanh;l++) {
+        MJD = ssetanh[l].MJD;
+        T   = ssetanh[l].T;
+        H[i + (j+l)*m] = 0.5 * ( tanh((t[i]-MJD)/T) - 1.0);
+      }
+      j += n_ssetanh;
+
       if (estimate_multivariate==true) {
-        if (!isnan(x[i])) {
-          row = multivariate[i_gap];
-          if (fabs(t[i]-row[0])>TINY) {
-            cerr << "on row " << i_gap << " time stamp is different" << endl;
-            cerr << "t_obs=" << t[i] << ", t_multivariate=" << row[0] << endl;
-            exit(EXIT_FAILURE);
-          }
-          for (l=0;l<n_channels;l++) H[i+(j+l)*m] = row[l+1];
-          i_gap++;
-        } else {
-          for (l=0;l<n_channels;l++) H[i+(j+l)*m] = 0.0;
+        row = multivariate[i_multi];
+        //--- Skip rows until first observation, afterwards this is not needed
+        while (t[i]-row[0]>0.001 && i_multi<multivariate.size()-1) {
+          i_multi++;
+          row = multivariate[i_multi];
         }
+        //--- Have we somehow already reached the end?
+        if (i_multi==multivariate.size()-1) {
+          cerr << "Multivariate time series is too short!" << endl;
+          exit(EXIT_FAILURE);
+
+        //--- Problem with time step: not exact same epoch in both series
+        } else if (fabs(row[0]-t[i])>TINY) {
+          cerr << "Epoch of multivariate file is: " << row[0] << endl;
+          cerr << "Time in time series is: " << t[i] << endl;
+          cerr << "This should not happen!" << endl;
+          exit(EXIT_FAILURE);
+        }
+
+        //--- row is now for t[i] -> copy columns 
+        for (l=0;l<n_channels;l++) H[i+(j+l)*m] = row[l+1];
+
+        //--- Already move to next row
+        i_multi++;
+
+        //--- Move n_channel columns to the right
         j += n_channels; 
       }
     }
+
+#ifdef DEBUG
+    myfile.open("H.dat", ios::out);
+    for (i=0;i<m;i++) {
+      if (isnan(x[i])==false) {
+        for (j=0;j<n;j++) myfile << H[i + j*m] << "  ";
+        myfile << endl;
+      }
+    }
+    myfile.close();
+#endif
 
     //--- Construct selection matrix F
     if (Ngaps>0) {
@@ -672,6 +727,11 @@ DesignMatrix* DesignMatrix::singleton = NULL;
     for (j=0;j<n_postseismicexp;j++) {
       printf("exp relaxation at %10.4lf (T=%8.2lf) : %7.2lf +/- %5.2lf %s\n",
 		postseismicexp[j].MJD, postseismicexp[j].T,
+					theta[i],error[i],unit.c_str()); i++;
+    }
+    for (j=0;j<n_ssetanh;j++) {
+      printf("tanh sse at %10.4lf (T=%8.2lf) : %7.2lf +/- %5.2lf %s\n",
+		ssetanh[j].MJD, ssetanh[j].T,
 					theta[i],error[i],unit.c_str()); i++;
     }
     for (j=0;j<n_channels;j++) {

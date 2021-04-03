@@ -36,7 +36,7 @@
        
       public:
         RemoveOutliers(void);
-        void     compute_LeastSquares(int& m, double **r);
+        void     compute_LeastSquares(int& m, double **r, double **t);
         int      compare (const void * a, const void * b);
         void     data_snooping(void);
     };

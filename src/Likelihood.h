@@ -44,15 +44,18 @@
         }
 
         void    reset_method(void);
-        void    prepare_covariance(double *param);
         void    compute_LeastSquares(double *param);
-        double  compute(double *param, bool quick=false);
-        void    show_leastsquares(void);
+        double  compute(double *param);
+        void    show_leastsquares(void); 
+        void    compute_BIC_cs(double *BIC_c) {method->compute_BIC_cs(BIC_c);};
         void    compute_L_and_ICs(double *param);
         double  get_sigma_eta(void) {return method->get_sigma_eta();};
+        double  get_ln_det_I(void) {return method->get_ln_det_I();};
         double  get_ln_L(void) {return method->get_ln_L();};
         double  get_AIC(void) {return method->get_AIC();};
         double  get_BIC(void) {return method->get_BIC();};
+        double  get_BIC_tp(void) {return method->get_BIC_tp();};
+        double  get_BIC_c(void) {return method->get_BIC_c();};
     };
 
   #endif 

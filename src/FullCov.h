@@ -42,8 +42,8 @@
       public:
         FullCov(void);
         ~FullCov(void);
-        virtual void    prepare_covariance(double *param);
         virtual void    compute_LeastSquares(double *param);
+        virtual void    compute_BIC_cs(double *BIC_c);
     };
   
   #endif

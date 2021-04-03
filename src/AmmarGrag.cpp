@@ -34,6 +34,7 @@
   #include <cmath>
   #include <cstdlib>
   #include <cstdio>
+  #include <algorithm>
   #include <sys/time.h>
 
 //  #define DEBUG
@@ -44,9 +45,11 @@
 //==============================================================================
 
 
-//---!!---------------------
-  AmmarGrag::AmmarGrag(void)
-//---!!---------------------
+//---!!-------------------------------------------
+  AmmarGrag::AmmarGrag(void) : tpi(8.0*atan(1.0)),
+                               LARGE(9.9e99),
+			       EPS(1.0e-6)
+//---!!-------------------------------------------
   {
     int           i,j,k,Status,nyc,offset;
 
@@ -83,6 +86,8 @@
       A2      = new double[m*n];
       y1      = new double[m];
       y2      = new double[m];
+      t1      = new double[m];
+      t2      = new double[m];
       F_H     = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * nyc*n);
       F_x     = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * nyc*1);
       if (Ngaps>0) {
@@ -160,6 +165,8 @@
     if (A2!=NULL)       delete[] A2;
     if (y1!=NULL)       delete[] y1;
     if (y2!=NULL)       delete[] y2;
+    if (t1!=NULL)       delete[] t1;
+    if (t2!=NULL)       delete[] t2;
     if (G1!=NULL)       delete[] G1;
     if (G2!=NULL)       delete[] G2;
     if (M2!=NULL)       delete[] M2;
@@ -303,38 +310,38 @@
 
 
 
-/*! compute l1 and l2. At the same time already compute G1, G2, y1 and y2.
+/*! compute least-squares using given values of noise parameters.
  *
  * \param[in]  param             arrray with noise parameters
- * \param[out] ln_determinant_C  logarithm of determinant of Covariance matrix
+ * \param[out] ln_determinant_I  logarithm of determinant of information matrix
+ * \param[out] sigma_eta         standard deviation of the driving white noise
  */
-//-------------------------------------------------
-  void AmmarGrag::prepare_covariance(double *param)
-//-------------------------------------------------
+//---------------------------------------------------
+  void AmmarGrag::compute_LeastSquares(double *param)
+//---------------------------------------------------
   {
-    NoiseModel     &noisemodel=NoiseModel::getInstance();
-    struct timeval start,end,start_total;
-    long           mtime, seconds, useconds;  
-    int            i;
+    NoiseModel   &noisemodel=NoiseModel::getInstance();
+    int          i,j,*ipiv,k;
+    double       product,ms;
+    clock_t      start,end,start2,end2;
 
     using namespace std;
+    //--- Create pivots (check which is larger n or Ngaps)
+    k = n;
+    if (Ngaps>n) k=Ngaps;
+    ipiv = new int[k];
+    for (i=0;i<k;i++) ipiv[i]=i;
+
     //--- Create the 1st column of the Covariance matrix. Since this is
     //    a Toeplitz matrix, this column vector is sufficient.
     //    Note that this is for unit variance value of sigma_eta.
     noisemodel.get_covariance(param,m,gamma_x);
 
     //--- Perform step 1 : compute l1 and l2 vectors (including delta_m)
-    gettimeofday(&start, NULL);
     ln_det_C = step1(gamma_x,&l1,&l2); //-- A MLEBase-class variable
-    gettimeofday(&end, NULL);
-#ifdef TIME
-    seconds  = end.tv_sec  - start.tv_sec;
-    useconds = end.tv_usec - start.tv_usec;
-    mtime = ((seconds) * 1000 + useconds/1000.0) + 0.5;
-    cout << "step1: " << mtime << " msec" << endl;
-#endif
 
-    gettimeofday(&start, NULL);
+    step2(1,F_x,y1,y2);
+    step2(n,F_H,A1,A2);
     //--- It's faster to copy directly the result into G1 and G2 then to
     //    perform FFT and iFFT's.
     if (Ngaps>0) {
@@ -346,17 +353,19 @@
         cblas_dcopy(m-index[i],l2,1,&G2[index[i]+i*m],1);
       }
     }
-    
-    gettimeofday(&end, NULL);
-#ifdef TIME
-    seconds  = end.tv_sec  - start.tv_sec;
-    useconds = end.tv_usec - start.tv_usec;
-    mtime = ((seconds) * 1000 + useconds/1000.0) + 0.5;
-    cout << "step2: " << mtime << " msec" << endl;
-#endif
+
+    //--- Compute C_thetaInv = A1'*A1 - A2'*A2
+    cblas_dsyrk(CblasColMajor,CblasUpper,CblasTrans,
+					n,m,1.0,A2,m, 0.0,C_thetaInv,n);
+    cblas_dsyrk(CblasColMajor,CblasUpper,CblasTrans,
+					n,m,1.0,A1,m,-1.0,C_thetaInv,n);
+
+    //--- Compute dummy = A1'*y1 - A2'*y2
+    cblas_dgemv(CblasColMajor,CblasTrans,m,n,1.0,A2,m,y2,1, 0.0,dummy,1);
+    cblas_dgemv(CblasColMajor,CblasTrans,m,n,1.0,A1,m,y1,1,-1.0,dummy,1);
 
     if (Ngaps>0) {
-      //--- Compute M = Chol(G'*G)
+      //--- Compute matrix M
       memset(M ,0,(Ngaps*Ngaps)*sizeof(double)); // put M to zero
       memset(M2,0,(Ngaps*Ngaps)*sizeof(double)); // put M2 to zero
       #pragma omp parallel sections
@@ -374,136 +383,339 @@
       clapack_dpotrf(CblasColMajor,CblasUpper,Ngaps,M,Ngaps);
 
       //--- Adjust ln_det_C which is a MLEBase-class variable
-#ifdef DEBUG
-      cout << "ln_det_C=" << ln_det_C << endl;
-#endif
       for (i=0;i<Ngaps;i++) {
         ln_det_C += 2.0*log(M[i+i*Ngaps]);
       }
-#ifdef DEBUG
-      cout << " after correction: ln_det_C="<<ln_det_C << endl;
-#endif
 
-    }
-  }
-
-
-
-/*! compute least-squares using given values of noise parameters.
- *
- * \param[in]  param             arrray with noise parameters
- * \param[out] ln_determinant_I  logarithm of determinant of information matrix
- * \param[out] sigma_eta         standard deviation of the driving white noise
- */
-//---------------------------------------------------
-  void AmmarGrag::compute_LeastSquares(double *param)
-//---------------------------------------------------
-  {
-    int            i,j,*ipiv,k;
-    double         product;
-
-    using namespace std;
-    //--- Create pivots (check which is larger n or Ngaps)
-    k = n;
-    if (Ngaps>n) k=Ngaps;
-    ipiv = new int[k];
-    for (i=0;i<k;i++) ipiv[i]=i;
-
-    //--- Compute the auxiliary matrices A1, A2. These are always recomputed
-    //    because I change H when looking for offsets.
-    step2(1,F_x,y1,y2);
-    step2(n,F_H,A1,A2);
-
-    if (Ngaps==0) {
-      //--- Compute C_theta
-      cblas_dsyrk(CblasColMajor,CblasUpper,CblasTrans,
-						n,m,1.0,A2,m, 0.0,C_theta,n);
-      cblas_dsyrk(CblasColMajor,CblasUpper,CblasTrans,
-						n,m,1.0,A1,m,-1.0,C_theta,n);
-
-      //--- Now compute inv(A1'*A1 - A2'*A2)
-      clapack_dpotrf(CblasColMajor,CblasUpper,n,C_theta,n);
-
-      //--- Now we can compute inverse of C_theta.  
-      clapack_dpotri(CblasColMajor,CblasUpper,n,C_theta,n);
-
-      //--- Compute A1'*y1 - A2'*y2
-      cblas_dgemv(CblasColMajor,CblasTrans,m,n,1.0,A2,m,y2,1, 0.0,dummy,1);
-      cblas_dgemv(CblasColMajor,CblasTrans,m,n,1.0,A1,m,y1,1,-1.0,dummy,1);
-      //--- Finally, perform Least-Squares
-      cblas_dsymv(CblasColMajor,CblasUpper,n,1.0,C_theta,n,dummy,1,0.0,theta,1);
-
-      //--- Compute residuals
-      cblas_dgemv(CblasColMajor,CblasNoTrans,m,n,1.0,A1,m,theta,1,-1.0,y1,1);
-      cblas_dgemv(CblasColMajor,CblasNoTrans,m,n,1.0,A2,m,theta,1,-1.0,y2,1);
-    
-      product = cblas_ddot(m,y1,1,y1,1) - cblas_ddot(m,y2,1,y2,1);
-
-      //------------ End No-Gap case ------------------------
-
-    } else {
-      
-      //--- Solve M'*Q_A=G'*A
+      //--- Solve M'*Q_A=G1'*A1 - G2'*A2
       cblas_dgemm(CblasColMajor,CblasTrans,CblasNoTrans,
 					Ngaps,n,m,1.0,G2,m,A2,m, 0.0,QA,Ngaps);
       cblas_dgemm(CblasColMajor,CblasTrans,CblasNoTrans,
 					Ngaps,n,m,1.0,G1,m,A1,m,-1.0,QA,Ngaps);
       clapack_dgetrs(CblasColMajor,CblasTrans,Ngaps,n,M,Ngaps,ipiv,QA,Ngaps);
-      //--- Solve M'*Q_y=G'*y
+
+      //--- Solve M'*Q_y=G1'*y1 - G2'*y2
       cblas_dgemm(CblasColMajor,CblasTrans,CblasNoTrans,
 					Ngaps,1,m,1.0,G2,m,y2,m, 0.0,Qy,Ngaps);
       cblas_dgemm(CblasColMajor,CblasTrans,CblasNoTrans,
 					Ngaps,1,m,1.0,G1,m,y1,m,-1.0,Qy,Ngaps);
       clapack_dgetrs(CblasColMajor,CblasTrans,Ngaps,1,M,Ngaps,ipiv,Qy,Ngaps);
 
-      //--- Compute C_theta
+      //--- Adjust C_thetaInv with -QA'*QA
       cblas_dsyrk(CblasColMajor,CblasUpper,CblasTrans,
-					n,Ngaps,1.0,QA,Ngaps,0.0,C_theta,n);
-      cblas_dsyrk(CblasColMajor,CblasUpper,CblasTrans,
-					n,m, 1.0,A2,m,1.0,C_theta,n);
-      cblas_dsyrk(CblasColMajor,CblasUpper,CblasTrans,
-					n,m,1.0,A1,m,-1.0,C_theta,n);
-
-      //--- Now compute inv(A'*A). First compute Cholesky decomposition
-      clapack_dpotrf(CblasColMajor,CblasUpper,n,C_theta,n);
-
-      //--- Now we can compute inverse of C_theta.  
-      clapack_dpotri(CblasColMajor,CblasUpper,n,C_theta,n);
-
-      //--- Compute A'*y - Q_A'*Q_y
+					n,Ngaps,-1.0,QA,Ngaps,1.0,C_thetaInv,n);
+      //--- Adjust dummy with -Q_A'*Q_y
       cblas_dgemv(CblasColMajor,CblasTrans,
-				Ngaps,n,1.0,QA,Ngaps,Qy,1, 0.0,dummy,1);
-      cblas_dgemv(CblasColMajor,CblasTrans,
-				m,n,1.0,A2,m,y2,1, 1.0,dummy,1);
-      cblas_dgemv(CblasColMajor,CblasTrans,
-				m,n,1.0,A1,m,y1,1,-1.0,dummy,1);
+				Ngaps,n,-1.0,QA,Ngaps,Qy,1,1.0,dummy,1);
+    }
 
-      //--- Finally, perform Least-Squares
-      cblas_dsymv(CblasColMajor,CblasUpper,n,1.0,C_theta,n,dummy,1,0.0,theta,1);
+    //--- Now compute inv(A1'*A1 - A2'*A2 - [QA'*QA])
+    cblas_dcopy(n*n,C_thetaInv,1,C_theta,1);
+    clapack_dpotrf(CblasColMajor,CblasUpper,n,C_theta,n);
 
-      //--- Compute residuals t1=A1*theta-y1 -> stored in y1
-      cblas_dgemv(CblasColMajor,CblasNoTrans,m,n,1.0,A1,m,theta,1,-1.0,y1,1);
-      cblas_dgemv(CblasColMajor,CblasNoTrans,m,n,1.0,A2,m,theta,1,-1.0,y2,1);
-      //--- Solve M'*Q_t=G'*(A*theta-y)
+    //--- Compute ln_det_I (The logarithm of the determinant of the
+    //    Fisher Information matrix). det(C_theta^{-1}) = 1/det(C_theta)
+    //    However, I = C_theta^{-1} so the inverses cancel.
+    ln_det_I = 0.0;
+    for (i=0;i<n;i++) {
+      ln_det_I += 2.0*log(C_theta[i+i*n]);
+    }
+      
+    //--- Now we can compute inverse of C_theta.  
+    clapack_dpotri(CblasColMajor,CblasUpper,n,C_theta,n);
+
+    //--- Perform Least-Squares
+    cblas_dsymv(CblasColMajor,CblasUpper,n,1.0,C_theta,n,dummy,1,0.0,theta,1);
+
+    //--- Compute residuals t1 and t2
+    cblas_dcopy(m,y1,1,t1,1);
+    cblas_dcopy(m,y2,1,t2,1);
+    cblas_dgemv(CblasColMajor,CblasNoTrans,m,n,1.0,A1,m,theta,1,-1.0,t1,1);
+    cblas_dgemv(CblasColMajor,CblasNoTrans,m,n,1.0,A2,m,theta,1,-1.0,t2,1);
+    
+    product = cblas_ddot(m,t1,1,t1,1) - cblas_ddot(m,t2,1,t2,1);
+
+    //--- For Gaps, subtract also Qt'*Qt 
+    if (Ngaps>0) {
+      //--- Solve M'*Q_t=(G1'*(A1*theta-y1) - G2'*(A2*theta-y2))
       cblas_dgemm(CblasColMajor,CblasTrans,CblasNoTrans,
-					Ngaps,1,m,1.0,G2,m,y2,m, 0.0,Qt,Ngaps);
+					Ngaps,1,m,1.0,G2,m,t2,m, 0.0,Qt,Ngaps);
       cblas_dgemm(CblasColMajor,CblasTrans,CblasNoTrans,
-					Ngaps,1,m,1.0,G1,m,y1,m,-1.0,Qt,Ngaps);
+					Ngaps,1,m,1.0,G1,m,t1,m,-1.0,Qt,Ngaps);
       clapack_dgetrs(CblasColMajor,CblasTrans,Ngaps,1,M,Ngaps,ipiv,Qt,Ngaps);
-
-      product = cblas_ddot(m,y1,1,y1,1) - cblas_ddot(m,y2,1,y2,1) -
-						cblas_ddot(Ngaps,Qt,1,Qt,1);
-
+      product -= cblas_ddot(Ngaps,Qt,1,Qt,1);
     }
 
     //--- compute sigma_eta which is a MLEBase-class variable
     sigma_eta = sqrt(product/static_cast<double>(m-Ngaps));
 
+    //--- Fisher Information matrix was computed using unit covariance
+    //    matrix. Update with right scaling.
+    ln_det_I -= 2.0*n*log(sigma_eta);
+
     //--- free memory
     delete[] ipiv;
+  }
 
-#ifdef DEBUG
-    cout << "product=" << product << endl;
-    cout << "sigma_eta =" << sigma_eta << endl;
-#endif
+
+
+/*! Compute BIC_c for all possible offset locations. I assume that an offset
+ *  was placed at the first observation (new column in H) and that
+ *  compute_LeastSquares was called so that l1, l2 and a lot of other matrices
+ *  and vectors already have been computed which are re-used here.
+ */
+//---------------------------------------------
+  void AmmarGrag::compute_BIC_cs(double *BIC_c)
+//---------------------------------------------
+  {
+    using namespace std;
+    vector<double>             offsets;
+    vector< vector<double> >   off_omp;
+    NoiseModel      &noisemodel=NoiseModel::getInstance();
+    int             i,j,l,column,ny,nyc,*ipiv,k,n_offsets,offset_index,N;
+    double          product,ms,time0,time1,lnf_s,lnf_theta;
+    clock_t         start,end,start2,end2;
+    bool            already_used;
+    DesignMatrix    *designmatrix = DesignMatrix::getInstance();
+    Observations    &observations = Observations::getInstance();
+    double          *H_omp,*z_omp,*theta_omp,*C_theta_omp,*C_thetaInv_omp;
+    double          *t1_omp,*t2_omp,*QA_omp,*Qt_omp,*dummy_omp,*A1_omp,*A2_omp;
+    double          *t_ori,*x_ori,lambda,fact_k,sigma_eta_,ln_L_,ln_det_I_;
+    fftw_complex    *FH_omp;
+
+    using namespace std;
+    //--- Some initialisation for computing BIC_c
+    N = m - Ngaps; // Actual number of observations
+    observations.get_values(m,&t_ori,&x_ori);
+    observations.get_offsets(offsets);
+    n_offsets = offsets.size();
+    if (n_offsets<1) {
+      cerr << "Not a single offset found! Cannot be good..." << endl;
+      exit(EXIT_FAILURE);
+    }
+    ny = 2*m-1;  // array size needed for FFT operations
+    nyc= ny/2+1; // arrayz size of complex values FFT arrays
+    observations.get_t0t1(time0,time1); // start & end time of time series
+    offset_index = designmatrix->get_offset_index(); // where are offsets in H
+    column = offset_index + n_offsets - 1; // last offset column in H
+    lambda = (time1-time0+1.0) / beta_spacing;
+    cout << "lambda=" << lambda << endl;
+
+    //--- For the OMP stuff I need Nthreads copy of the offsets
+    off_omp.resize(Nthreads, vector<double>(n_offsets,0.0));
+    for (i=0;i<Nthreads;i++) {
+      for (j=0;j<n_offsets;j++) off_omp[i][j] = offsets[j];
+    }
+
+    //--- For the OMP stuff, I need to create various instances of several
+    //    matrices and vectors to allow computations in parallel.
+    try {
+      H_omp          = new double[Nthreads*m*n];
+      A1_omp         = new double[Nthreads*m*n];
+      A2_omp         = new double[Nthreads*m*n];
+      dummy_omp      = new double[Nthreads*ny];
+      QA_omp         = new double[Nthreads*Ngaps*n];
+      Qt_omp         = new double[Nthreads*Ngaps];
+      C_theta_omp    = new double[Nthreads*n*n];
+      C_thetaInv_omp = new double[Nthreads*n*n];
+      z_omp          = new double[Nthreads*n];
+      t1_omp         = new double[Nthreads*m];
+      t2_omp         = new double[Nthreads*m];
+      theta_omp      = new double[Nthreads*n];
+      FH_omp = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * nyc*Nthreads);
+    } 
+    catch (bad_alloc()) {
+      cerr << "AmmarGrag: need more memory!" << endl;
+      exit(EXIT_FAILURE);
+    }
+
+    //--- Fill all matrices and vectors
+    for (i=0;i<Nthreads;i++) {
+      cblas_dcopy(m,&H[m*column],1,&H_omp[i*m],1);
+      cblas_dcopy(n,dummy,1,&z_omp[i*n],1);
+      cblas_dcopy(m*n,A1,1,&A1_omp[i*m*n],1);
+      cblas_dcopy(m*n,A2,1,&A2_omp[i*m*n],1);
+      cblas_dcopy(Ngaps*n,QA,1,&QA_omp[i*Ngaps*n],1);
+      cblas_dcopy(n*n,C_thetaInv,1,&C_thetaInv_omp[i*n*n],1);
+    }
+
+    //--- Create pivots (check which is larger n or Ngaps)
+    k = n;
+    if (Ngaps>n) k=Ngaps;
+    ipiv = new int[k];
+    for (i=0;i<k;i++) ipiv[i]=i;
+
+
+    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // Loop over all possible offset locations, except first observation
+    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    BIC_c[0] = LARGE;
+
+    #pragma omp parallel for private(i,j,l,product,already_used,ln_det_I_,\
+					     ln_L_,sigma_eta_,lnf_s,lnf_theta)
+    for (i=1;i<m;i++) {
+
+      //--- Which thread is this?
+      l = omp_get_thread_num ();
+
+      //--- Shift offset in design matrix H. Gaps are already  set to zero 
+      //    but in this way I am sure that it always works correctly. Note
+      //    that this subroutine assumes an offset is set at i=0.
+      memset(&H_omp[l*m],0,i*sizeof(double));
+
+      //--- Check if we already have an offset at this location or if we
+      //    are dealing with a missing observations which needs to be skipped
+      //    too.
+      already_used = false;
+      for (j=0;j<n_offsets-1;j++) {
+        if (fabs(t[i]-off_omp[l][j])<EPS) {
+          cout << "i=" << ", t=" << t[i] << endl;
+          already_used=true;
+        } 
+      } 
+      if (isnan(x_ori[i]) || already_used==true) {
+        BIC_c[i] = LARGE;
+      } else {
+
+        //--- Set last offset to new location
+        off_omp[l][n_offsets-1] = t[i];
+
+        //--- Compute A1 & A2 for new design matrix H
+        memset(&dummy_omp[l*ny+m],0,(m-1)*sizeof(double)); //--- zero padding 
+        cblas_dcopy(m,&H_omp[l*m],1,&dummy_omp[l*ny],1);
+        fftw_execute_dft_r2c(plan_forward,&dummy_omp[l*ny],&FH_omp[l*nyc]);
+
+        #pragma omp critical
+        {
+          step2(1,&FH_omp[l*nyc],&A1_omp[l*m*n+m*column],
+						    &A2_omp[l*m*n+m*column]);
+        }
+
+        //--- Update last column of inv(C_theta)
+        cblas_dgemm(CblasColMajor,CblasTrans,CblasNoTrans,n,1,m,1.0,
+			&A2_omp[l*m*n],m,&A2_omp[l*m*n+column*m],m, 
+				   0.0,&C_thetaInv_omp[l*n*n+column*n],n);
+        cblas_dgemm(CblasColMajor,CblasTrans,CblasNoTrans,n,1,m,1.0,
+			&A1_omp[l*m*n],m,&A1_omp[l*m*n+column*m],m,
+				  -1.0,&C_thetaInv_omp[l*n*n+column*n],n);
+        z_omp[l*n+column]  = cblas_ddot(m,&A1_omp[l*m*n+column*m],1,y1,1);
+        z_omp[l*n+column] -= cblas_ddot(m,&A2_omp[l*m*n+column*m],1,y2,1);
+
+        //--- If required, add QA and Qy part to C_thetaInv and dummy      
+        if (Ngaps>0) {
+          //--- Update last column of QA
+          cblas_dgemm(CblasColMajor,CblasTrans,CblasNoTrans,
+		      Ngaps,1,m,1.0,G2,m,&A2_omp[l*m*n+column*m],m, 0.0,
+				        &QA_omp[l*Ngaps*n+column*Ngaps],Ngaps);
+          cblas_dgemm(CblasColMajor,CblasTrans,CblasNoTrans,
+		      Ngaps,1,m,1.0,G1,m,&A1_omp[l*m*n+column*m],m,-1.0,
+				        &QA_omp[l*Ngaps*n+column*Ngaps],Ngaps);
+          clapack_dgetrs(CblasColMajor,CblasTrans,Ngaps,1,M,Ngaps,ipiv,
+				        &QA_omp[l*Ngaps*n+column*Ngaps],Ngaps);
+          //--- Adjust last column of C_thetaInv and z
+          cblas_dgemm(CblasColMajor,CblasTrans,CblasNoTrans,n,1,Ngaps,-1.0,
+	          &QA_omp[l*Ngaps*n],Ngaps,&QA_omp[l*Ngaps*n+column*Ngaps],
+				  Ngaps,1.0,&C_thetaInv_omp[l*n*n+column*n],n);
+          z_omp[l*n+column] -= cblas_ddot(Ngaps,
+					&QA_omp[l*Ngaps*n+column*Ngaps],1,Qy,1);
+        }
+
+        //--- Compute C_theta
+        cblas_dcopy(n*n,&C_thetaInv_omp[l*n*n],1,&C_theta_omp[l*n*n],1);
+        clapack_dpotrf(CblasColMajor,CblasUpper,n,&C_theta_omp[l*n*n],n);
+			
+        //--- Compute ln_det_I (The logarithm of the determinant of the
+        //    Fisher Information matrix). det(C_theta^{-1}) = 1/det(C_theta)
+        //    However, I = C_theta^{-1} so the inverses cancel.
+        ln_det_I_ = 0.0;
+        for (j=0;j<n;j++) {
+          ln_det_I_ += 2.0*log(C_theta_omp[l*n*n + j+j*n]);
+        }
+
+        //--- Now inverse C_theta
+        clapack_dpotri(CblasColMajor,CblasUpper,n,&C_theta_omp[l*n*n],n);
+      
+        //--- Perform Least-Squares
+        cblas_dsymv(CblasColMajor,CblasUpper,n,1.0,&C_theta_omp[l*n*n],n,
+					&z_omp[l*n],1,0.0,&theta_omp[l*n],1);
+								     
+
+        //--- Compute residuals t1 and t2 = y1-A1*theta and y2-A2*theta
+        cblas_dcopy(m,y1,1,&t1_omp[l*m],1);
+        cblas_dcopy(m,y2,1,&t2_omp[l*m],1);
+        cblas_dgemv(CblasColMajor,CblasNoTrans,m,n,1.0,&A1_omp[l*m*n],m,
+				        &theta_omp[l*n],1,-1.0,&t1_omp[l*m],1);
+        cblas_dgemv(CblasColMajor,CblasNoTrans,m,n,1.0,&A2_omp[l*m*n],m,
+					&theta_omp[l*n],1,-1.0,&t2_omp[l*m],1);
+
+        product = cblas_ddot(m,&t1_omp[l*m],1,&t1_omp[l*m],1) - 
+				cblas_ddot(m,&t2_omp[l*m],1,&t2_omp[l*m],1);
+					
+        if (Ngaps>0) {
+          //--- Q_t = inv(M')*(G1'* t1 - G2'*t2) 
+          cblas_dgemm(CblasColMajor,CblasTrans,CblasNoTrans,Ngaps,1,m,1.0,
+			      G2,m,&t2_omp[l*m],m, 0.0,&Qt_omp[l*Ngaps],Ngaps);
+          cblas_dgemm(CblasColMajor,CblasTrans,CblasNoTrans,Ngaps,1,m,1.0,
+			      G1,m,&t1_omp[l*m],m,-1.0,&Qt_omp[l*Ngaps],Ngaps);
+          clapack_dgetrs(CblasColMajor,CblasTrans,Ngaps,1,M,Ngaps,ipiv,
+						       &Qt_omp[l*Ngaps],Ngaps);
+          product -= cblas_ddot(Ngaps,&Qt_omp[l*Ngaps],1,&Qt_omp[l*Ngaps],1);
+        }
+
+        //--- Finally, compute sigma_eta
+        sigma_eta_ = sqrt(product/static_cast<double>(m-Ngaps));
+
+        //--- Fisher Information matrix was computed using unit covariance
+        //    matrix. Update with right scaling.
+        ln_det_I_ -= 2.0*n*log(sigma_eta_);
+
+        //--- Compute Log-Likelihood
+        ln_L_ = -0.5*(N*log(tpi) + ln_det_C + 2.0*N*log(sigma_eta_) + N);
+        //cout << t[i] << "  " << ln_L << endl;
+
+        lnf_s = 0.0;
+        //--- Number of offsets follows Poisson distribution. I think I could
+        //    move this section of code outside the loop over i to avoid 
+        //    computing the same thing over and over but I've kept it here
+        //    to keep the code readable.
+        if (!isnan(beta_spacing)) {
+          fact_k = 1.0;
+          for (j=1;j<=n_offsets;j++) fact_k *= j;
+          lnf_s = log(pow(lambda,n_offsets)*exp(-lambda)/fact_k);
+        }
+
+        //--- Size of offsets follows exponential distribution
+        lnf_theta = 0.0;
+        if (!isnan(beta_size)) {
+          //--- prior for size of offsets     
+          for (j=0;j<n_offsets;j++) {
+            lnf_theta += -fabs(theta_omp[l*n+offset_index+j])/beta_size;
+          }
+          //cout << "lnf_theta= " << lnf_theta << endl;
+        } 
+
+        //--- Compute BIC_c (Nparam is defined in MLEBase)
+        BIC_c[i] = (Nparam+n+1)*log(N) - 2.0*ln_L_ + ln_det_I_ 
+		         - 2.0*lnf_s - 2.0*lnf_theta + extra_penalty*n_offsets;
+        if (Kashyap==false) BIC_c[i] -= ln_det_I_;
+      } 
+    }
+
+    //--- Free memory
+    delete[] H_omp;
+    delete[] A1_omp;
+    delete[] A2_omp;
+    delete[] dummy_omp;
+    delete[] QA_omp;
+    delete[] Qt_omp;
+    delete[] C_theta_omp;
+    delete[] C_thetaInv_omp;
+    delete[] z_omp;
+    delete[] t1_omp;
+    delete[] t2_omp;
+    delete[] theta_omp;
+    delete[] ipiv;
+    delete[] t_ori;
+    delete[] x_ori;
+    fftw_free (FH_omp);
   }

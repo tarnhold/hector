@@ -36,10 +36,11 @@
 
     class AmmarGrag : public MLEBase
     {
-      protected:
+      private:
+        const double            tpi,LARGE,EPS;
         int                     max_order,Nthreads,ny,*index;
         double                  *A1,*A2,*y1,*y2,*G1,*G2,*l1,*l2,*gamma_x;
-        double                  *dummy,*Qy,*QA,*Qt,*M,*M2;
+        double                  *dummy,*Qy,*QA,*Qt,*M,*M2,*t1,*t2;
         fftw_complex            *F_H,*F_x,*F_l1,*F_l2,*F_dummy;
         fftw_plan               plan_backward,plan_forward;
 
@@ -50,8 +51,8 @@
       public:
         AmmarGrag(void);
         ~AmmarGrag(void);
-        virtual void    prepare_covariance(double *param);
         virtual void    compute_LeastSquares(double *param);
+        virtual void    compute_BIC_cs(double *BIC_c);
     };
 
   #endif 

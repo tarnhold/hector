@@ -44,9 +44,10 @@
 //=============================================================================
 
 
-//--!!------------------------------------------
-  NoiseModel::NoiseModel(void) : NaN(sqrt(-1.0))
-//--!!------------------------------------------
+//--!!---------------------------------------------
+  NoiseModel::NoiseModel(void) : NaN(sqrt(-1.0)),
+				 tpi(8.0*atan(1.0))
+//--!!---------------------------------------------
   {
     using namespace std;
     int      i;
@@ -160,6 +161,7 @@
 
 
 /*! compute fraction
+ *  Assume an N-sphere, param contains angles
  */
 //---------------------------------------------------------
   double NoiseModel::compute_fraction(int i, double *param)
@@ -168,19 +170,19 @@
     int      j;
     double   fraction;
     
-    fraction = 1.0;
-    if (Nmodels>1) {
-      if (i==0) {
-        fraction = param[0];
-      } else if (i==Nmodels-1) {
-        for (j=0;j<Nmodels-1;j++) fraction *= (1.0-param[j]);
-      } else {
-        for (j=0;j<i;j++) fraction *= (1.0-param[j]);
-        fraction *= param[i];
-      }
-    }
+    using namespace std;
+    if (Nmodels==1) {
+      return 1.0;
+    } else {
+      fraction=1.0;
+      for (j=0;j<i;j++)  fraction *= sin(tpi*param[j]);
+      if (i<Nmodels-1)   fraction *= cos(tpi*param[i]);
+ 
+      //--- Some range checks
+      if (fraction>1.0) fraction=1.0;
 
-    return fraction;
+      return pow(fraction,2.0);
+    }
   }
 
 
@@ -281,7 +283,7 @@
       if (param[i]<0.0) {
         penalty += (0.0-param[i])*LARGE;
         param[i] = 0.0;
-      } else if (param[i]>1.0) {
+      } else if (param[i]>1.0 && i<1) {
         penalty += (param[i]-1.0)*LARGE;
         param[i] = 1.0;
       }

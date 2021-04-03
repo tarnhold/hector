@@ -17,13 +17,17 @@
 #
 #===============================================================================
 
-VERSION=1.6
+VERSION=1.7
+SUBVERSION=2
 
 #--- Check on which machine this script is running
 HOST=$(shell hostname)
+$(info $(HOST))
 
-
-#--- Include directories
+#--- create executables that are stand-alone static binaries or do they call 
+#    shared libraries?
+#executable_type = static
+executable_type = shared
 
 #--- Hector can be compiled on Mac OS with MacPorts using Gnu C++. I am not
 #    able to create static binaries.
@@ -34,6 +38,28 @@ ifeq "$(HOST)" "Machiels-MacBook"
   LIB_DIR = -L/opt/local/lib 
   PREFIX  =/opt/local
   ATLAS   = -latlas -llapack -lcblas -lblas
+  GSL     = -lgsl
+  FFTW    = -lfftw3
+
+else ifeq "$(HOST)" "Machiels-MacBook-Pro-2.local"
+  CPP     = g++
+  INC_DIR = -I/opt/local/include -I/opt/local/include/libomp 
+  PREFIX  =/opt/local
+  ifeq "$(executable_type)" "static"
+    CPPFLAGS= -O1 -march=x86-64
+    LIB_DIR = -L./ -lmine2
+    ATLAS   = 
+    GSL     = 
+    FFTW    = 
+  else
+    CPPFLAGS= -O2 -Xpreprocessor -fopenmp
+    #CPPFLAGS= -g -fno-omit-frame-pointer -fsanitize=address
+    ATLAS   = -latlas -llapack -lcblas -lblas
+    #ATLAS   = -lblas -lcblas  -latlas
+    LIB_DIR = -L/opt/local/lib -L/opt/local/lib/libomp -lomp
+    GSL     = -lgsl
+    FFTW    = -lfftw3
+  endif
 
 #--- These settings are used on a CentOS machine
 #    Note that I have compiled my own Atlas library from
@@ -45,6 +71,8 @@ else ifeq "$(HOST)" "carga.vguest.segal"
   INC_DIR = -I./ -I/usr/include/atlas
   LIB_DIR = -L/usr/local/lib64/
   ATLAS   = -lmy_lapack -lmy_cblas -lmy_atlas # use my own compiled Atlas lib
+  GSL     = -lgsl
+  FFTW    = -lfftw3
 
 #--- Fedora Core 21 V.machine
 else ifeq "$(HOST)" "FC21"
@@ -53,18 +81,26 @@ else ifeq "$(HOST)" "FC21"
   PREFIX=/usr/local
   CPPFLAGS= -O3 -fopenmp
   INC_DIR = -I./ -I/usr/include/atlas-x86_64-base
-   LIB_DIR = -L/usr/lib64/atlas/
+  LIB_DIR = -L/usr/lib64/atlas/
   ATLAS   = -llapack -lcblas -lblas -latlas 
+  GSL     = -lgsl
+  FFTW    = -lfftw3
 
 #--- Standard values which work in many cases
 else 
   CPP = g++
   $(info ./src/Makefile: Unknown machine, I am using standard values)
   PREFIX=/usr/local
-  CPPFLAGS= -O3 -fopenmp -static 
+  ifeq "$(executable_type)" "static"
+    CPPFLAGS= -O3 -fopenmp -static 
+  else
+    CPPFLAGS= -O3 -fopenmp 
+  endif
   INC_DIR = -I./ -I/usr/include/atlas
   LIB_DIR = -L/usr/lib/atlas-base/
   ATLAS   = -llapack_atlas -latlas -lcblas
+  GSL     = -lgsl
+  FFTW    = -lfftw3
 endif
 
 #--- Directory where programs will be installed
@@ -75,12 +111,13 @@ likelihood_objects = Likelihood.o AmmarGrag.o FullCov.o MLEBase.o
 noisemodel_objects = NoiseModel.o White.o Powerlaw.o PowerlawApprox.o \
 	ARFIMA.o GenGaussMarkov.o 
 programs = estimatetrend modelspectrum estimatespectrum simulatenoise \
-	removeoutliers date2mjd mjd2date 
+	removeoutliers date2mjd mjd2date findoffset
 
 all : $(programs)
 
 clean:
 	rm -f *.o $(programs)
+	rm -rf *.dSYM
 
 install:
 	mkdir -p $(BIN_DIR)
@@ -98,31 +135,31 @@ estimatetrend : EstimateTrend.cpp Control.o Minimizer.o \
 	$(CPP) $(CPPFLAGS) EstimateTrend.cpp Control.o Minimizer.o \
 	$(noisemodel_objects) $(likelihood_objects) Observations.o \
 	DesignMatrix.o HyperGeo.o Calendar.o  \
-	 -DVERSION=$(VERSION) \
-	$(INC_DIR) $(LIB_DIR) $(ATLAS) -lfftw3 -lgsl $(ATLAS) \
+	 -DVERSION=$(VERSION) -DSUBVERSION=$(SUBVERSION) \
+	$(INC_DIR) $(LIB_DIR) $(ATLAS) $(FFTW) $(GSL) $(ATLAS) $(ATLAS) \
 	-o estimatetrend
 
 removeoutliers : RemoveOutliers.cpp RemoveOutliers.h \
 	Observations.o DesignMatrix.o Control.o Calendar.o
 	$(CPP) $(CPPFLAGS) RemoveOutliers.cpp Observations.o DesignMatrix.o \
-	Control.o Calendar.o -DVERSION=$(VERSION) \
-	$(INC_DIR) $(LIB_DIR) $(ATLAS) -lgsl $(ATLAS) \
+	Control.o Calendar.o -DVERSION=$(VERSION) -DSUBVERSION=$(SUBVERSION) \
+	$(INC_DIR) $(LIB_DIR) $(ATLAS) $(GSL) $(ATLAS) \
 	-o removeoutliers
 
 modelspectrum : ModelSpectrum.cpp ModelSpectrum.h \
 	$(noisemodel_objects) Control.o Observations.o HyperGeo.o Calendar.o \
 	$(likelihood_objects) DesignMatrix.o
 	$(CPP) $(CPPFLAGS) ModelSpectrum.cpp $(noisemodel_objects) \
-	$(likelihood_objects) DesignMatrix.o \
+	$(likelihood_objects) DesignMatrix.o -DSUBVERSION=$(SUBVERSION) \
         Control.o Observations.o HyperGeo.o Calendar.o -DVERSION=$(VERSION) \
-	$(INC_DIR) $(LIB_DIR) $(ATLAS) -lfftw3 -lgsl $(ATLAS) \
+	$(INC_DIR) $(LIB_DIR) $(ATLAS) $(FFTW) $(GSL) $(ATLAS) \
         -o modelspectrum
 
 estimatespectrum : EstimateSpectrum.cpp Observations.o Control.o \
 	Calendar.o
 	$(CPP) $(CPPFLAGS) EstimateSpectrum.cpp Observations.o Control.o \
-	Calendar.o -DVERSION=$(VERSION) \
-	$(INC_DIR) $(LIB_DIR) -lfftw3 \
+	Calendar.o -DVERSION=$(VERSION) -DSUBVERSION=$(SUBVERSION) \
+	$(INC_DIR) $(LIB_DIR) $(FFTW) \
         -o estimatespectrum
 
 simulatenoise : SimulateNoise.cpp SimulateNoise.h $(noisemodel_objects) \
@@ -130,8 +167,8 @@ simulatenoise : SimulateNoise.cpp SimulateNoise.h $(noisemodel_objects) \
 	DesignMatrix.o Observations.o Calendar.o
 	$(CPP) $(CPPFLAGS) SimulateNoise.cpp $(noisemodel_objects) \
 	$(likelihood_objects) DesignMatrix.o Observations.o Calendar.o \
-        Control.o HyperGeo.o -DVERSION=$(VERSION) \
-        $(INC_DIR) $(LIB_DIR) $(ATLAS) -lfftw3 -lgsl \
+        Control.o HyperGeo.o -DVERSION=$(VERSION) -DSUBVERSION=$(SUBVERSION) \
+        $(INC_DIR) $(LIB_DIR) $(ATLAS) $(FFTW) $(GSL) $(ATLAS) \
         -o simulatenoise
 
 date2mjd : date2MJD.cpp Calendar.o
@@ -140,6 +177,15 @@ date2mjd : date2MJD.cpp Calendar.o
 mjd2date : MJD2date.cpp Calendar.o
 	$(CPP) $(CPPFLAGS) $(LIB_DIR) MJD2date.cpp Calendar.o -o mjd2date
 
+findoffset : FindOffset.cpp Control.o Minimizer.o \
+	$(noisemodel_objects) $(likelihood_objects) Observations.o \
+	DesignMatrix.o HyperGeo.o Calendar.o 
+	$(CPP) $(CPPFLAGS) FindOffset.cpp Control.o Minimizer.o \
+	$(noisemodel_objects) $(likelihood_objects) Observations.o \
+	DesignMatrix.o HyperGeo.o Calendar.o  \
+	 -DVERSION=$(VERSION) -DSUBVERSION=$(SUBVERSION) \
+	$(INC_DIR) $(LIB_DIR) $(ATLAS) $(FFTW) $(GSL) $(ATLAS) \
+	-o findoffset
 
 #---------- Subroutines
 

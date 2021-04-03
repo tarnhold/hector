@@ -28,12 +28,17 @@
     #include "NoiseModel.h"
     #include "DesignMatrix.h"
     #include <gsl/gsl_multimin.h>
+    #include <gsl/gsl_rng.h>
+    #include <gsl/gsl_randist.h>
 
     class Minimizer
     {
       private:
-        int            Nparam;
-        double         *param,*error;
+        int                  Nparam;
+        double               *param,*error;
+        bool                 randomise_first_guess;
+        const gsl_rng_type   *T_random;
+        gsl_rng              *r_random;
 
         void   fill_X(int k0, double s0, int k1, double s1, double *X);
         void   show_L_and_ICs(void);

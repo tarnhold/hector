@@ -166,6 +166,7 @@
     double         MJD,T;
     LogEntry       logdummy;
     ExpEntry       expdummy;
+    TanhEntry      tanhdummy;
 
     breaks.clear();
     offsets.clear();
@@ -225,6 +226,13 @@
           postseismicexp.push_back(expdummy);
         } else {
           cerr << "Could not understand postseismic-exp line:" << line << endl;
+          exit(EXIT_FAILURE);
+        }
+      } else if (strncmp("# tanh",line,6)==0) {
+        if (sscanf(&line[6],"%lf %lf",&tanhdummy.MJD,&tanhdummy.T)==2) {
+          ssetanh.push_back(tanhdummy);
+        } else {
+          cerr << "Could not understand SSE-tanh line:" << line << endl;
           exit(EXIT_FAILURE);
         }
       }
@@ -306,10 +314,11 @@
       cout << j << " : offset=" << offsets[j] << endl;
 #endif
     while (i<offsets.size()) {
-      if (offsets[i]>t[0] && offsets[i]<t[m-1]) {
+      if (offsets[i]>t[0]-TINY && offsets[i]<t[m-1]+TINY) {
         //--- find index
         j=0;
-        while (t[j]<offsets[i] || (t[j]>offsets[i]-TINY && isnan(x[j]))) j++;
+        while (t[j]<offsets[i]-TINY || (t[j]>offsets[i]-TINY 
+						&& isnan(x[j]))) j++;
         //cout << "i=" << i << ", index=" << j << " t[j]=" << t[j] <<  endl;
         index_already_used = false;
         for (k=0;k<index.size();k++) {
@@ -350,6 +359,7 @@
     int        i;
     LogEntry   logdummy;
     ExpEntry   expdummy;
+    TanhEntry  tanhdummy;
 
     using namespace std;
     fp << "# sampling period " << 1.0/(fs*24.0*3600.0) << endl;
@@ -367,6 +377,10 @@
       expdummy = postseismicexp[i];
       fp << "# exp " << expdummy.MJD << "  " << expdummy.T << endl;
     }
+    for (i=0;i<ssetanh.size();i++) {
+      tanhdummy = ssetanh[i];
+      fp << "# tanh " << tanhdummy.MJD << "  " << tanhdummy.T << endl;
+    }
   }
 
 
@@ -379,7 +393,7 @@
     fstream   fp;
     string    fn(filename);
     double    fraction,MJD;
-    int       MSL,flag,year,yearly,missing;
+    int       MSL,flag,year,yearly,missing,month;
     char      line[80];
     long int  J;
     Calendar  calendar;
@@ -396,8 +410,8 @@
     fp.getline(line,80);
     if (sscanf(line,"%lf;%d;%d;%d",&fraction,&MSL,&missing,&flag)==4) {
       year = static_cast<int>(floor(fraction));
-      J    = calendar.julday(year,1,0);
-      MJD  = static_cast<double>(J-2400001) + fmod(fraction,1.0)*365.25;
+      month= static_cast<int>(0.501 + (fraction-year)*12.0);
+      MJD = 30.4375*(12*(year-1859) + (month-1.0)) + 59.0;
     } else {
       cerr << "Direct trouble reading the first line!" << endl;
       exit(EXIT_FAILURE);
@@ -409,7 +423,7 @@
           t.push_back(MJD);
           x.push_back(static_cast<double>(scale_factor*MSL)); // scale data
         } else {
-          cout << "found gap at: " << line << endl;
+          //cout << "found gap at: " << line << endl;
         }
         MJD += 30.4375; // I assume the PSMSL files have no gaps
       } else {
@@ -687,6 +701,7 @@
       if (sscanf(line,"%lf%lf%lf%lf",&yearfraction,&obs[0],&obs[1],
 							   &obs[2])==4) {
         MJD = floor(365.25*(yearfraction-1970.0)+40587.0+0.1)-0.5; 
+          cout << "# yearfraction=" << yearfraction-2000 << ", MJD_old=" << MJD_old << ", MJD=" << MJD << endl;
         if (first_line==true || MJD-MJD_old>TINY) {
           t.push_back(MJD);
           x.push_back(scale_factor*obs[component]);
@@ -706,6 +721,7 @@
         } else {
           cout << "Problem: " << line << endl;
         }
+        cout << ">> yearfraction=" << yearfraction-2000 << ", MJD_old=" << MJD_old << ", MJD=" << MJD << endl;
       } else {
         cerr << "Unable to understand line: " << line;
         exit(EXIT_FAILURE);
@@ -859,12 +875,14 @@
           j++;
         } while ((t[i]-t_new[j]-dt)>0.1*dt);
         if (fabs(t[i]-t_new[j]-dt)>0.1*dt) {
-          cerr << "Oops, the data is not equally spaced over the missing data!"
-               << endl << "MJD=" << t[i] << endl;
-          cerr << "In other words, Hector guessed a data sampling (for example"
-               << " 7 days) and" << endl << " uses that to find the times in "
-               << " the gap." << endl;
-          cerr << "Bottom line: add \"# sampling period\" in header!" << endl;
+          cerr << "Oops, missing data timing problem at MJD=" << t[i] << endl;
+          cerr << "t_new="<<t_new[j]<< ", dt="<<dt << endl;
+          cerr << "There could be various reasons for this" << endl;
+          cerr << "1) There is no sampling information in the header and "
+               << "Hector guessed wrongly" << endl;
+          cerr << "  Solution: add \"# sampling period\" in header!" << endl;
+          cerr << "2) time is not monotonically increasing" << endl;
+          cerr << "3) time is an integer of dt" << endl;
           exit(EXIT_FAILURE);
         }
       }
@@ -992,6 +1010,22 @@
 
 
 
+/*! Copy ssetanh to ssetanh_ 
+ */
+//----------------------------------------------------------------
+  void Observations::get_ssetanh(std::vector<TanhEntry>& ssetanh_)
+//----------------------------------------------------------------
+  {
+    int   i;
+
+    ssetanh_.clear();
+    for (i=0;i<ssetanh.size();i++) {
+      ssetanh_.push_back(ssetanh[i]);
+    }
+  }
+
+
+
 /*! Add offset
  */
 //-----------------------------------------
@@ -1015,4 +1049,16 @@
       exit(EXIT_FAILURE);
     }
     offsets[column] = MJD;
+  }
+
+
+
+/*! To compute prior, I need first and last epoch
+ */
+//---------------------------------------------------
+  void Observations::get_t0t1(double& t0, double& t1)
+//---------------------------------------------------
+  {
+    t0 = t[0]; 
+    t1 = t[t.size()-1]; 
   }

@@ -272,7 +272,7 @@
 //-----------------------------------------------------
   {
     double        penalty=0.0;
-    const double  LARGE=1.0e3;
+    const double  LARGE=1.0e5;
 
     using namespace std;
     if (Nparam==0) {

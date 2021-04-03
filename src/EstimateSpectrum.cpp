@@ -472,7 +472,8 @@
     //--- Start estimatespectrum
     cout << endl
          << "************************************" << endl
-         << "    estimatespectrum, version " << VERSION << endl
+         << "    estimatespectrum, version " << VERSION << "." << 
+         SUBVERSION << endl
          << "************************************" << endl;
 
     make_Welch_periodogram(segments);

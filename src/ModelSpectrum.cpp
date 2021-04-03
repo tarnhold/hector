@@ -43,6 +43,10 @@
     double            T,*theta;
     complex<double>   a,b,c,w;
 
+    cout << "---------------" << endl;
+    cout << "ModelSpectrum" << endl;
+    cout << "---------------" << endl << endl;
+
     //--- Need to know the standard deviation of epsilon (the white noise)
     cout << "Enter the standard deviation of the driving noise: ";
     cin >> sigma;
@@ -147,8 +151,8 @@
 
     cout << endl
          << "************************************" << endl
-         << "    modelspectrum, version " << VERSION << endl
-         << "************************************" << endl << endl;
+         << "    modelspectrum, version " << VERSION << "." << SUBVERSION <<endl
+         << "************************************" << endl;
 
     //--- start modelspectrum
     ModelSpectrum PSD;

@@ -40,13 +40,14 @@
         std::string            unit;
         bool                   estimate_multitrend,varying_seasonal;
         int                    n,m,Ngaps,n_periodic_signals,n_offsets,n_breaks;
-        int                    n_postseismiclog,n_postseismicexp;
+        int                    n_postseismiclog,n_postseismicexp,n_ssetanh;
         int                    degree_polynomial,n_channels,index_offset;
         int                    varyingseasonal_N,index_seasonal;
         double                 dt,*H,*F,*periods,th,t0,*t;
         std::vector<double>    offsets,breaks;
         std::vector<LogEntry>  postseismiclog;
         std::vector<ExpEntry>  postseismicexp;
+        std::vector<TanhEntry> ssetanh;
         bool                   seasonal_signal,halfseasonal_signal;
         bool                   estimate_multivariate;
         DesignMatrix(void);

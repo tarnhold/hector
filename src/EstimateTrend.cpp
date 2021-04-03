@@ -33,6 +33,7 @@
   int main(int argc, char *argv[])
   {
     using namespace std;
+
     //--- Open correct control file
     if (argc==1) {
       Control &control = Control::getInstance("estimatetrend.ctl");
@@ -46,8 +47,8 @@
     //--- Start estimatetrend
     cout << endl 
          << "************************************" << endl 
-         << "    estimatetrend, version " << VERSION << endl    
-         << "************************************" << endl;
+         << "    estimatetrend, version " << VERSION << "." << 
+         SUBVERSION << endl << "************************************" << endl;
 
     Minimizer      minimizer;
     time_t         start,end;

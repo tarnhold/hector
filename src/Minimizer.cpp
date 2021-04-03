@@ -33,6 +33,8 @@
   #include <ostream>
   #include <cstdlib>
   #include <cstdio>
+  #include <sys/types.h>
+  #include <unistd.h>
 
 //  #define DEBUG
 //==============================================================================
@@ -44,10 +46,20 @@
 //---!!---------------------
   {
     NoiseModel  &noisemodel = NoiseModel::getInstance();
+    Control     &control=Control::getInstance();
 
     Nparam = noisemodel.get_Nparam();
     param  = new double[Nparam];
     error  = new double[Nparam];
+
+    using namespace std;
+    //--- Do we randomise first gues of noise parameter values?
+    try {
+      randomise_first_guess = control.get_bool("RandomiseFirstGuess");
+    }
+    catch (exception &e) {
+      randomise_first_guess = false;
+    }
   }
 
 
@@ -91,7 +103,7 @@
 //---------------------------
   {
     int           i;
-    double        sigma_eta,ln_det_C,*theta=NULL,FTOL=1.0e-4;
+    double        sigma_eta,ln_det_C,*theta=NULL,FTOL=1.0e-7;
     NoiseModel    &noisemodel  = NoiseModel::getInstance();
     Likelihood    &likelihood  = Likelihood::getInstance();
 
@@ -102,14 +114,14 @@
     gsl_multimin_function              minex_func;
     size_t                             iter = 0;
     int                                status;
-    double                             size;
+    long                               seed;
+    double                             size,w;
 
     using namespace std;
     //--- Check if simple ordinary least-squares is required
     if (Nparam==0) {
       //--- no Minimizer required, simple OLS
       cout << "performing Ordinary Least-Squares" << endl;
-      likelihood.prepare_covariance(param);
       likelihood.compute_LeastSquares(param);
       //--- Even if no noise parameters are estimated, it is good to show
       //    which noise model was chosen and what its amplitude is. The
@@ -123,12 +135,24 @@
     } else {    
       //--- Find minimum using Nelder-Mead Simplex method ---------
 
+      //--- Initiate random generator
+      T_random = gsl_rng_default;
+      r_random = gsl_rng_alloc (T_random);
+      seed     = time (NULL) * getpid();
+      gsl_rng_set (r_random, seed);
+
       //--- Starting point 
       x = gsl_vector_alloc (Nparam);
       for (i=0;i<Nparam;i++) {
-        gsl_vector_set (x, i, 0.1);
+        if (randomise_first_guess==true) {
+          w = gsl_ran_flat(r_random,0.0,0.25);
+          gsl_vector_set (x, i, 0.04 + w);
+        } else {
+          gsl_vector_set (x, i, 0.1);
+        }
       }
-     
+      gsl_rng_free (r_random);
+ 
       //--- Set initial step sizes to 0.3 
       ss = gsl_vector_alloc (Nparam);
       gsl_vector_set_all (ss, 0.3);
@@ -235,7 +259,7 @@
   {
     using namespace std;
     int             k,n;
-    double          *H,ln_L,AIC,BIC;
+    double          *H,ln_L,ln_det_I,AIC,BIC,BIC_tp,BIC_c;
     DesignMatrix    *designmatrix = DesignMatrix::getInstance();
     Likelihood      &likelihood = Likelihood::getInstance();
  
@@ -244,8 +268,11 @@
     k = Nparam + n + 1;
 
     ln_L     = likelihood.get_ln_L();
+    ln_det_I = likelihood.get_ln_det_I();
     AIC      = likelihood.get_AIC();
     BIC      = likelihood.get_BIC();
+    BIC_tp   = likelihood.get_BIC_tp();
+    BIC_c    = likelihood.get_BIC_c();
 
     cout << endl << "Likelihood value" << endl << "--------------------"
          << endl;
@@ -254,6 +281,9 @@
     cout << "k         =" << n << " + " << Nparam << " + 1 = " << k << endl;
     cout << "AIC       =" << AIC << endl;
     cout << "BIC       =" << BIC << endl;
+    cout << "BIC_tp    =" << BIC_tp << endl;
+    cout << "BIC_c     =" << BIC_c << endl;
+    cout << "ln_det_I  =" << ln_det_I << endl;
 
     //--- free memory
     delete[] H;

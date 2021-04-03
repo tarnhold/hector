@@ -57,21 +57,21 @@
  
 /* Compute least-squares
  */
-//-------------------------------------------------------------
-  void RemoveOutliers::compute_LeastSquares(int& m, double **r)
-//-------------------------------------------------------------
+//-------------------------------------------------------------------------
+  void RemoveOutliers::compute_LeastSquares(int& m, double **r, double **t)
+//-------------------------------------------------------------------------
   {
     Observations   &observations=Observations::getInstance();
     DesignMatrix   *designmatrix=NULL;
     int            i,j,n;
     const double   TINY=1.0e-6;
-    double         *t,*x,*H,*theta,*Ctheta;
+    double         *x,*H,*theta,*Ctheta;
     FILE           *fp;
 
     using namespace std;
     //--- get observations and design matrix H
     observations.remove_gaps();
-    observations.get_values(m,&t,&x);
+    observations.get_values(m,t,&x);
     cout << "after removal gaps, m=" << m << endl;
     designmatrix = DesignMatrix::getInstance();
     designmatrix->get_H(n,&H);
@@ -127,7 +127,6 @@
     //--- free memory
     delete[] theta;
     delete[] x;
-    delete[] t;
     delete[] H;
     delete[] Ctheta;
   }
@@ -162,11 +161,16 @@
     Observations   &observations=Observations::getInstance();
     int            m,bad_points,i,j;
     vector<double> q;
-    double         *r,interquartile,median,lower_boundary,upper_boundary;
+    double         *r,interquartile,median,lower_boundary,upper_boundary,*t;
+    FILE           *fp;
 
+    //--- Save time of outliers
+    fp = fopen("outliers.out","w");
+
+    //--- Start data snooping loop
     do {
       q.clear();
-      compute_LeastSquares(m,&r);
+      compute_LeastSquares(m,&r,&t);
       for (i=0;i<m;i++) q.push_back(r[i]);
       sort(q.begin(),q.end());
 #ifdef DEBUG
@@ -187,6 +191,7 @@
         if (r[i]<lower_boundary || r[i]>upper_boundary) {
           //cout << "bad point index = " << i << ", value=" << r[i] << endl;
           observations.set_one_x(i,NaN);
+          fprintf(fp,"%f\n",t[i]);
           bad_points++;
         }
       }
@@ -194,9 +199,13 @@
       
       //--- free memory for next run
       delete[] r;
+      delete[] t;
       q.clear();
     
     } while (bad_points>0);
+
+    //--- Close file with time of outliers
+    fclose(fp);
   }
 
 
@@ -219,9 +228,10 @@
     }
 
     cout << endl
-         << "************************************" << endl
-         << "    removeoutliers, version " << VERSION << endl
-         << "************************************" << endl;
+         << "**************************************" << endl
+         << "    removeoutliers, version " << VERSION 
+         << "." << SUBVERSION << endl
+         << "**************************************" << endl;
 
     //--- Now it's safe to call the other classes
     RemoveOutliers  outliers;

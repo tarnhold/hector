@@ -35,19 +35,24 @@
       double  MJD,T;
     } ExpEntry;
 
+    typedef struct {
+      double  MJD,T;
+    } TanhEntry;
+
     class Observations
     {
       private:
-        const double          NaN;
-        int                   Ngaps;
-        double                fs,scale_factor;
-        bool                  PSMSL_monthly,interpolate_data;
-        void                  (Observations::*read_observations)(std::string 
+        const double           NaN;
+        int                    Ngaps;
+        double                 fs,scale_factor;
+        bool                   PSMSL_monthly,interpolate_data;
+        void                   (Observations::*read_observations)(std::string 
 								     filename);
-        std::vector<double>   t,x,xhat,offsets,breaks;
-        std::vector<LogEntry> postseismiclog;
-        std::vector<ExpEntry> postseismicexp;
-        std::string 	      extension;
+        std::vector<double>    t,x,xhat,offsets,breaks;
+        std::vector<LogEntry>  postseismiclog;
+        std::vector<ExpEntry>  postseismicexp;
+        std::vector<TanhEntry> ssetanh;
+        std::string 	       extension;
  
         Observations(void);
         void   read_header(std::fstream& fp, int component);
@@ -82,6 +87,8 @@
         void   get_breaks(std::vector<double>& breaks_);
         void   get_postseismiclog(std::vector<LogEntry>& postseismiclog_);
         void   get_postseismicexp(std::vector<ExpEntry>& postseismicexp_);
+        void   get_ssetanh(std::vector<TanhEntry>& ssetanh_);
+        void   get_t0t1(double& t0, double& t1);
         void   add_offset(double MJD);
         void   change_offset(int column, double MJD);
     };

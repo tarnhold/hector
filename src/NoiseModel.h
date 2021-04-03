@@ -37,7 +37,7 @@
     class NoiseModel 
     {
       private:
-        const double         NaN;
+        const double         NaN,tpi;
         static bool          instanceFlag;
         static NoiseModel    *singleton;
         int                  Nparam,Nmodels,*NparamIndv;

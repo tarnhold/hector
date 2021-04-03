@@ -114,17 +114,6 @@
 
 /*!
  */
-//--------------------------------------------------
-  void Likelihood::prepare_covariance(double *param)
-//--------------------------------------------------
-  {
-    method->prepare_covariance(param);
-  }
-
-
-
-/*!
- */
 //----------------------------------------------------
   void Likelihood::compute_LeastSquares(double *param)
 //----------------------------------------------------
@@ -136,11 +125,11 @@
 
 /*!
  */
-//-----------------------------------------------------
-  double Likelihood::compute(double *param, bool quick)
+//-----------------------------------------
+  double Likelihood::compute(double *param)
 //-----------------------------------------------------
   {
-    return method->compute(param,quick);
+    return method->compute(param);
   }
 
 

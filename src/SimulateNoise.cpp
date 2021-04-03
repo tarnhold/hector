@@ -92,6 +92,7 @@
       cout << "noise created" << endl;
 
       //--- write results to file
+      fprintf(fp,"# sampling period %lf\n",dt);
       for (j=ms;j<(ms+m);j++) {
         fprintf(fp,"%lf  %lf\n",MJD[j-ms],y[j]);
       }
@@ -136,7 +137,8 @@
 
     cout << endl
          << "************************************" << endl
-         << "    simulatenoise, version " << VERSION << endl
+         << "    simulatenoise, version " << VERSION << endl 
+         << "." << SUBVERSION
          << "************************************" << endl;
 
     //--- Now it's save to initiate the SimulateNoise class

@@ -109,16 +109,20 @@
 
 
 
-/*! Compute Cholesky decomposition of C 
+/*! Compute the Least-Squares bit to estimate theta and sigma_eta. At
+ *  the same time determine the logarithm of the determinant of C. Note
+ *  that sigma_eta is estimated from the whitened residuals, not using MLE.
  *
  * \param[in]  param       : array with noise parameters
  */
-//-----------------------------------------------
-  void FullCov::prepare_covariance(double *param)
-//-----------------------------------------------
+//-------------------------------------------------
+  void FullCov::compute_LeastSquares(double *param)
+//-------------------------------------------------
   {
     NoiseModel  &noisemodel=NoiseModel::getInstance();
     int         i,i0,i1,j0,j1;
+    int         j,*ipiv;
+    double      product,lambda,lambda_min,lambda_max;
 
     using namespace std;
     //--- Create the Covariance matrix. 
@@ -161,24 +165,7 @@
     for (i=0;i<N;i++) {
       ln_det_C += 2.0*log(C[i+N*i]);
     }
-  }
-
-
-
-/*! Compute the Least-Squares bit to estimate theta and sigma_eta. At
- *  the same time determine the logarithm of the determinant of C. Note
- *  that sigma_eta is estimated from the whitened residuals, not using MLE.
- *
- * \param[in]  param       : array with noise parameters
- */
-//-------------------------------------------------
-  void FullCov::compute_LeastSquares(double *param)
-//-------------------------------------------------
-  {
-    int         i,j,*ipiv;
-    double      product,lambda,lambda_min,lambda_max;
-
-    using namespace std;
+ 
     //--- Always compute A and y from dummyH and dummyx
     cblas_dcopy(N*n,dummyH,1,A,1);
     cblas_dcopy(N,dummyx,1,y,1);
@@ -201,6 +188,14 @@
     //--- Simulate dgels using ATLAS subroutines (ordinary least-squares)
     cblas_dsyrk(CblasColMajor,CblasUpper,CblasTrans,n,N,1.0,A,N,0.0,C_theta,n);
     clapack_dpotrf(CblasColMajor,CblasUpper,n,C_theta,n);
+
+    //--- Compute ln_det_I (The logarithm of the determinant of the
+    //    Fisher Information matrix). det(C^{-1}) = 1/det(C)
+    //    However, I = C_theta^{-1} so the inverses cancel.
+    ln_det_I = 0.0;
+    for (i=0;i<n;i++) {
+      ln_det_I += 2.0*log(C_theta[i+i*n]);
+    }
 
     clapack_dpotri(CblasColMajor,CblasUpper,n,C_theta,n);
     cblas_dgemv(CblasColMajor,CblasTrans,N,n,1.0,A,N,y,1,0.0,dummy,1);
@@ -226,4 +221,17 @@
 
     //--- free memory
     delete[] ipiv;
+  }
+
+
+
+/*! Compute sigmas
+ */
+//-------------------------------------------
+  void FullCov::compute_BIC_cs(double *BIC_c)
+//-------------------------------------------
+  {
+    using namespace std;
+    cerr << "FullCov:compute_BIC_cs is not implemented!" << endl;
+    exit(EXIT_FAILURE);
   }
