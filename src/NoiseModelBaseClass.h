@@ -1,0 +1,26 @@
+/*! \file    NoiseModelBaseClass.h
+ *  \author  Machiel Bos
+ *
+ * Template of class to which the noise models must conform.
+ *
+ * \date 7/10/2012  Santa Clara
+ */
+//=============================================================================
+
+  #ifndef __NOISEMODELBASECLASS
+    #define __NOISEMODELBASECLASS
+
+    class NoiseModelBaseClass
+    {
+      public:
+        virtual ~NoiseModelBaseClass(void) {};
+        virtual void    get_covariance(double *param,int m,double *gamma_x)=0;
+        virtual void    show(double *param, double *error)=0;
+        virtual int     get_Nparam(void)=0;
+        virtual double  compute_penalty(double *param)=0;
+        virtual void    setup_PSD(void)=0;
+        virtual double  compute_G(double lambda)=0;
+
+    };
+ 
+  #endif 
