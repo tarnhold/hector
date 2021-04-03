@@ -194,7 +194,10 @@
         j++;
       }
     }
-    Variance_xt /= static_cast<double>(j-1);
+    //--- Avoid catastrophes
+    if (j>1) Variance_xt /= static_cast<double>(j-1);
+    else     Variance_xt  = 0.0;
+
     cout << "Total variance in signal (time domain): " << Variance_xt << endl;
     for (i=0;i<=L/2;i++)  (*G)[i] = 0.0;
     Variance_Gf = 0.0;
@@ -233,7 +236,11 @@
     //--- Divide total to get averaged PSD, which is more accurate
     Variance_Gf = 0.0;
     for (i=0;i<L/2+1;i++) {
-      (*G)[i] /= static_cast<double>(K-skipped_segments);
+      if (skipped_segments<K) {
+        (*G)[i] /= static_cast<double>(K-skipped_segments);
+      } else {
+        (*G)[i]  = 0.0;
+      }
       if (i==0 || i==L/2)  Variance_Gf+=(*G)[i]/(2.0*dt*static_cast<double>(L));
       else                 Variance_Gf+=(*G)[i]/(dt*static_cast<double>(L));
 
@@ -315,21 +322,32 @@
 
   int main(int argc, char *argv[])
   {
-    Control   *control=Control::getInstance("estimatespectrum.ctl");
+    Control   *control;
     int       segments=4;
 
     using namespace std;
-    cout << "----------------------" << endl 
-         << "   EstimateSpectrum   " << endl
-         << "----------------------" << endl << endl;
-
-    if (argc==2) {
+    //--- Open correct control file
+    if (argc==1) {
+      control = Control::getInstance("estimatespectrum.ctl");
+    } else if (argc==2) {
+      control = Control::getInstance("estimatespectrum.ctl");
       segments = atoi(argv[1]);
-    } else if (argc!=1) {
-      cerr << "EstimateSpectrum [number of segments (not counting overlaps)]" 
+    } else if (argc==3) {
+      segments = atoi(argv[1]);
+      control = Control::getInstance(argv[2]);
+    } else {
+      cerr << "estimatespectrum [number of segments (not counting overlaps)]" 
+           << " [controlfile.ctl]" << endl;
+      cerr << "If controlfile.ctl is given, the number of segments is required"
            << endl;
       exit(EXIT_FAILURE);
     }
+
+    //--- Start estimatespectrum
+    cout << endl
+         << "************************************" << endl
+         << "    estimatespectrum, version " << VERSION << endl
+         << "************************************" << endl;
 
     make_Welch_periodogram(segments);
 

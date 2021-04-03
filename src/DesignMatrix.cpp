@@ -8,6 +8,7 @@
  */
 //==============================================================================
   #include "DesignMatrix.h"
+  #include "Calendar.h"
   #include <iostream>
   #include <ostream>
   #include <iomanip>
@@ -33,14 +34,21 @@ DesignMatrix* DesignMatrix::singleton = NULL;
   {
     using namespace std;
     bool            estimate_offsets;
-    int             i,j,k,l;
-    double          *t,*x;
-    char            **periodic_signals;
+    int             i,j,k,l,year,month,day,hour,minute,Nnumbers;
+    double          *t,*x,second;
+    char            **periodic_signals,**numbers;
     Observations    *observations=Observations::getInstance();
     Control         *control=Control::getInstance();
+    Calendar        calendar;
 
-    control->get_string("PhysicalUnit",unit);
-    first_difference = control->get_bool("firstdifference");
+    try {
+      control->get_string("PhysicalUnit",unit);
+      first_difference = control->get_bool("firstdifference");
+    }
+    catch (const char* str) {
+      cerr << str << endl;
+      exit(EXIT_FAILURE);
+    }
     //--- determine size of matrices
     if (first_difference==true) {
       n = 1;
@@ -49,15 +57,35 @@ DesignMatrix* DesignMatrix::singleton = NULL;
     }
 
     //--- Do we need to include seasonal signal
-    seasonal_signal      = control->get_bool("seasonalsignal");
-    halfseasonal_signal  = control->get_bool("halfseasonalsignal");
+    try {
+      seasonal_signal      = control->get_bool("seasonalsignal");
+      halfseasonal_signal  = control->get_bool("halfseasonalsignal");
+    } 
+    catch (const char* str) {
+      cerr << str << endl;
+      exit(EXIT_FAILURE);
+    }
     if (seasonal_signal==true)     n +=2;
     if (halfseasonal_signal==true) n +=2;
 
     //--- An additional number of 20 periodic signals may be added
+    //    if keyword is not found, then that is okay too.
     periodic_signals = new char* [20];
-    control->get_name_list("periodicsignals",periodic_signals,
+    try {
+      control->get_name_list("periodicsignals",periodic_signals,
 							n_periodic_signals);
+    }
+    catch (const char* str) {
+      cout << "No extra periodic signal is included." << endl;
+    }
+    try {
+      quadratic_term = control->get_bool("QuadraticTerm");
+      if (quadratic_term==true) n++;
+    }
+    catch (const char* str) {
+      cout << "No quadratic term is included." << endl;
+      quadratic_term = false;
+    }
     if (n_periodic_signals>20) {
       cerr << "Only up to 20 periodic signals are allowed!" << endl;
       exit(EXIT_FAILURE);
@@ -81,7 +109,13 @@ DesignMatrix* DesignMatrix::singleton = NULL;
 #endif
 
     //--- Maybe we need to include offsets too
-    estimate_offsets = control->get_bool("estimateoffsets");
+    try {
+      estimate_offsets = control->get_bool("estimateoffsets");
+    }
+    catch (const char* str) {
+      cerr << str << endl;
+      exit(EXIT_FAILURE);
+    }
     if (first_difference==false && estimate_offsets==true) {
       observations->get_offsets(offsets);
       n_offsets  = offsets.size();
@@ -101,13 +135,41 @@ DesignMatrix* DesignMatrix::singleton = NULL;
       exit(EXIT_FAILURE);
     }
 
+    //--- See if there is a reference Epoch we should use for th
+    try {
+      numbers = new char* [20];
+      control->get_name_list("ReferenceEpoch",numbers,Nnumbers);
+    } 
+    catch (const char * str) {
+#ifdef DEBUG
+      cerr << str << endl;
+#endif
+    }
+    if (Nnumbers==0) { // No ReferenceEpoch found, use middle of time-series
+      th = 0.5*(t[0] + t[m-1]);
+    } else if (Nnumbers==3) {
+      year  = atoi(numbers[0]);
+      month = atoi(numbers[1]);
+      day   = atoi(numbers[2]);
+      hour  = 0;
+      minute= 0;
+      second= 0.0;
+      th    = calendar.compute_MJD(year,month,day,hour,minute,second);
+    } else {
+      cerr << "Correct usage: ReferenceEpoch year month day" << endl;
+      cout << "Nnumbers=" << Nnumbers << endl;
+      exit(EXIT_FAILURE);
+    }
+
     //--- Construct the design matrix H
-    th     = 0.5*(t[0] + t[m-1]);
     for (i=0;i<m;i++) {
       j = 1;
       if (first_difference==false) {
         H[i] = 1.0;
         H[i+j*m] = t[i]-th;                                     j++;
+        if (quadratic_term==true) {
+          H[i+j*m] = 0.5*pow(t[i]-th,2.0);                      j++;
+        }
         if (seasonal_signal==true) {
           H[i+j*m] = cos(tpi*(t[i]-51544.0)/365.25);            j++;
           H[i+j*m] = sin(tpi*(t[i]-51544.0)/365.25);            j++;
@@ -170,6 +232,7 @@ DesignMatrix* DesignMatrix::singleton = NULL;
 
     //--- free memory
     for (i=0;i<n_periodic_signals;i++) delete[] periodic_signals[i];
+    for (i=0;i<Nnumbers;i++)           delete[] numbers[i];
     delete[] periodic_signals;
   }
 
@@ -233,21 +296,30 @@ DesignMatrix* DesignMatrix::singleton = NULL;
   void DesignMatrix::show_results(double *theta, double *error)
 //-------------------------------------------------------------
   {
-    int      i,j;
-    double   ds = 365.25;
+    int      i,j,year,month,day,hour,minute;
+    double   ds = 365.25,second;
+    Calendar calendar;
 
     using namespace std;
     i=0;
     cout << fixed << setprecision(6);
     if (first_difference==false) {
+      calendar.compute_date(th,year,month,day,hour,minute,second);
       cout << "bias : " << theta[0] << " +/- " << error[0] << " " << unit 
-           << " (at MJD=" << th << ")" << endl;
+           << " (at " << year << "/" << month << "/" << day << ", " 
+           << hour << ":" << minute << ":" << second << ")" << endl;
       cout << "trend: " << theta[1]*ds << " +/- " << error[1]*ds
            << " " << unit << "/year" << endl;
       i += 2;
     } else {
       cout << "trend: " << theta[0]*ds << " +/- " << error[0]*ds
            << " " << unit << "/year" << endl;
+      i += 1;
+    }
+
+    if (quadratic_term==true) {
+      cout << "quadratic: " << theta[i]*ds*ds << " +/- " << error[i]*ds*ds
+           << " " << unit << "/year^2" << endl;
       i += 1;
     }
 

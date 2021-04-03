@@ -19,7 +19,7 @@
     {
       private:
         int     Nparam;
-        double  d_PSD,phi_PSD;
+        double  d_fixed,phi_fixed;
         double  backward(double a, double b, double c, double z,
                                                         double F, double Fp1);
 
@@ -31,6 +31,7 @@
         double  compute_penalty(double *param);
         void    setup_PSD(void);
         double  compute_G(double lambda);
+        void    compute_impulse_response(int m, double* h);
     };
 
   #endif

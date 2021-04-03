@@ -36,8 +36,14 @@
 
     using namespace std;
     //--- See how many AR and MA coefficients we require
-    p = control->get_int("AR_p");
-    q = control->get_int("MA_q");
+    try {
+      p = control->get_int("AR_p");
+      q = control->get_int("MA_q");
+    }
+    catch (const char* str) {
+      cerr << str << endl;
+      exit(EXIT_FAILURE);
+    }
 
     //--- See if we need to set d to zero, creating an ARMA model. In theory
     //    we can set d to any value between -0.5 and 0.5 but only 0 makes
@@ -56,9 +62,13 @@
 #endif
 
     //---- Have not implemented first difference ARFIMA yet!
-    if (control->get_bool("firstdifference")==true) {
+    try {
+      if (control->get_bool("firstdifference")==true) {
       cerr << "Have not implemented first differenced ARFIMA!" << endl;
       exit(EXIT_FAILURE);
+      }
+    }
+    catch (const char* str) {
     }
 
     //--- Set following arrays to NULL to avoid problems later on
@@ -118,7 +128,7 @@
          //--- Check if stationarity condition has been met
          if (abs(rho[i])>1.0) {
            cerr << "root " << i << " is larger than 1 : " << rho[i] << endl;
-           exit(EXIT_FAILURE);
+       //    exit(EXIT_FAILURE);
          }
        }
        //--- free memory
@@ -141,25 +151,34 @@
 //---------------------------------------------------------------------
   {
     using namespace std;
-    class Local {
-      public:
-        complex<double> multiply(int degree, int p, complex<double> *rho) {
-          int              i;
-          complex<double>  sum=0.0;
+    int               i,j,k,n;
+    complex<double>   coeff,*dummyC;
 
-          if (degree==1) for (i=0;i<p;i++)   sum += rho[i];
-          else for (i=0;i<p-1;i++) 
-			sum += rho[i]*multiply(degree-1,p-1,&rho[i+1]);
-          return sum;
-        };
-    };
-    
-    Local            local;
-    int              i;
+    //--- complex numbers need to be stored
+    dummyC = new complex<double>[p];
+    for (i=0;i<p;i++) dummyC[i]=0.0;
 
-    for (i=1;i<=p;i++) {
-      AR[i-1] = real(pow(-1.0,static_cast<double>(i))*local.multiply(i,p,rho));
+    //--- Compute the number of possible subsets
+    n = 1;
+    n <<= p;
+    for (i=0;i<n;i++) {
+      coeff = 1.0;
+      k     = 0;
+      for (j=0;j<p;j++) {
+        if ((i & 1<<j)>>j) {
+          coeff *= rho[j];
+          k++;
+        }
+      }
+      //--- Avoid the empty set solution 
+      if (k>0) {
+        dummyC[k-1] += coeff;
+      }
     }
+    for (i=0;i<p;i++) {
+      AR[i] = pow(-1.0,static_cast<double>(i))*real(dummyC[i]);
+    }
+    delete[] dummyC;
   }
 
 
@@ -177,6 +196,7 @@
     complex<double>  *rho,*zeta,*xi,g;
 
 #ifdef DEBUG
+    cout << "ZindeWalsh" << endl;
     for (i=0;i<p;i++) cout << "AR i:" << i << " ,  " << AR[i] << endl;
     for (i=0;i<q;i++) cout << "MA i:" << i << " ,  " << MA[i] << endl;
 #endif
@@ -195,6 +215,7 @@
     //--- Compute zeta
     zeta = new complex<double>[p];
     rho  = new complex<double>[p];
+ 
     find_roots(AR,rho);
     for (i=0;i<p;i++) {
       zeta[i] = complex<double>(1.0,0.0);
@@ -253,6 +274,9 @@
       cerr << "Both q and p are zero!" << endl;
       exit(EXIT_FAILURE);
     }
+#ifdef DEBUG
+//    for (i=0;i<m;i++) cout << "gamma i:" << i << " ,  " << gamma_x[i] << endl;
+#endif
        
     //--- Free memory
     delete[] alpha;
@@ -505,14 +529,21 @@
 
     //--- AR : I think create_ARFIMA does not choke on rho's<1
     if (p>0) {
+#ifdef DEBUG
+      for (i=0;i<p;i++) cout << "before i=" << i << ", " << param[i] << endl;
+#endif
       find_roots(param,rho);
       for (i=0;i<p;i++) {
         if (abs(rho[i])>0.99) {
           penalty += (abs(rho[i])-0.99)*LARGE;
-          rho[i] *= 0.99/rho[i];
+          rho[i] *= 0.99/abs(rho[i]);
         }
       }
       find_coefficients(rho,param);
+#ifdef DEBUG
+      for (i=0;i<p;i++) cout << "rho: i=" << i << ", " << rho[i] << endl;
+      for (i=0;i<p;i++) cout << "after i=" << i << ", " << param[i] << endl;
+#endif
     } 
 
     //--- d
@@ -529,7 +560,8 @@
     //--- MA does not have a contribution to the penalty value
 
 #ifdef DEBUG
-    cout << "Penalty: phi=" << param[0] << ", d=" << param[p+q] << endl;
+    cout << "Penalty: phi=" << param[0] << endl;
+    if (estimate_spectral_index==true) cout<<"Penalty: d="<< param[p+q] << endl;
 #endif
 
     return penalty; 
@@ -613,4 +645,73 @@
     G /= pow(2.0*sin(0.5*lambda),2.0*d_PSD);
 
     return G;
+  }
+
+
+
+/*! Compute impulse response: h
+ */
+//-------------------------------------------------------
+  void ARFIMA::compute_impulse_response(int m, double* h)
+//-------------------------------------------------------
+  {
+    int     i,j,k;
+    double  *AR,*MA,*psi,*b,I;
+
+    using namespace std;
+    //--- Allocate memory space for psi and b
+    psi = new double[m];
+    b   = new double[m];
+    AR  = new double[p];
+    MA  = new double[q];
+
+    //--- Ask for noise parameter values
+    for (i=0;i<p;i++) {
+      cout << "Enter parameter value of AR[" << i+1 << "]: ";
+      cin >> AR[i];
+    }
+    for (i=0;i<q;i++) {
+      cout << "Enter parameter value of MA[" << i+1 << "]: ";
+      cin >> MA[i];
+    }
+    if (estimate_spectral_index==true) {
+      cout << "Enter value of fractional difference d:";
+      cin >> d_fixed;
+    }
+
+    //--- b is the standard power-law impulse response
+    b[0] = 1.0;
+    for (i=1,I=1.0;i<m;i++,I+=1.0) b[i] = (d_fixed+I-1.0)/I*b[i-1];
+
+    //-- Write ARMA as an infinite MA model with psi coefficients
+    psi[0] = 1.0;
+    for (i=1;i<m;i++) {
+      if (i<=q) psi[i] = MA[i-1];
+      else      psi[i] = 0.0;
+      if (i<=p) k=i;
+      else      k=p;
+      for (j=0;j<k;j++) {
+        psi[i] += psi[i-j-1]*AR[j];
+      }
+    }
+
+    //--- Apply Hassler and Kokoszka formula
+    for (i=0;i<m;i++) {
+      h[i] = 0.0;
+      for (j=0;j<=i;j++) {
+        h[i] += psi[j]*b[i-j];
+      }
+    }
+
+#ifdef DEBUG
+    for (i=0;i<m;i++) {
+      cout << i << ", psi="<<psi[i]<<", b="<<b[i] << ", h=" << h[i] << endl;
+    }
+#endif
+
+    //--- free memory space
+    delete[] b;
+    delete[] psi;
+    delete[] AR;
+    delete[] MA;
   }

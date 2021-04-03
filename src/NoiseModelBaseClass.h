@@ -20,7 +20,7 @@
         virtual double  compute_penalty(double *param)=0;
         virtual void    setup_PSD(void)=0;
         virtual double  compute_G(double lambda)=0;
-
+        virtual void    compute_impulse_response(int m, double* h)=0;
     };
  
   #endif 

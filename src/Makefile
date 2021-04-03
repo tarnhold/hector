@@ -1,9 +1,12 @@
 # Makefile for the hector-1.0 programs
 #
-# 2/10/2012 Machiel Bos
+#  2/10/2012 Machiel Bos
+# 13/ 1/2013 Machiel Bos
 #===============================================================================
 
 include ../Makefile.inc
+
+VERSION=1.1
 
 #--- Directory where programs will be installed
 BINDIR=$(PREFIX)/bin
@@ -17,52 +20,80 @@ likelihood_objects = Likelihood.o LevinsonGap.o LevinsonNoGap.o \
 noisemodel_objects = NoiseModel.o White.o Powerlaw.o PowerlawApprox.o \
 	ARFIMA.o GenGaussMarkov.o
 programs = estimatetrend modelspectrum estimatespectrum removeoutliers \
-	date2mjd mjd2date
+	simulatenoise date2mjd mjd2date
 
 all : $(programs)
 
 clean:
-	rm -f *.o
-	rm -f $(programs)
+	rm -f *.o 
 
 install:
 	mkdir -p $(BINDIR)
 	install $(programs) $(BINDIR)
 
+uninstall :
+	@rm -f $(addprefix $(BINDIR)/,$(programs))
+
+
 estimatetrend : EstimateTrend.cpp Control.o Minimizer.o \
 	$(noisemodel_objects) $(likelihood_objects) Observations.o \
-	DesignMatrix.o HyperGeo.o
+	DesignMatrix.o HyperGeo.o Calendar.o
 	$(CPP) $(CPPFLAGS) EstimateTrend.cpp Control.o Minimizer.o \
 	$(noisemodel_objects) $(likelihood_objects) Observations.o \
-	DesignMatrix.o HyperGeo.o \
+	DesignMatrix.o HyperGeo.o Calendar.o -DVERSION=$(VERSION) \
 	$(INCLUDE_DIRS) -latlas -lcblas -llapack_atlas -lfftw3 -lgsl \
 	-o estimatetrend
 
-removeoutliers : RemoveOutliers.cpp RemoveOutliers.h Observations.o \
-        DesignMatrix.o Control.o
+removeoutliers : RemoveOutliers.cpp RemoveOutliers.h \
+	Observations.o DesignMatrix.o Control.o Calendar.o
 	$(CPP) $(CPPFLAGS) RemoveOutliers.cpp Observations.o DesignMatrix.o \
-	Control.o \
+	Control.o Calendar.o -DVERSION=$(VERSION) \
 	$(INCLUDE_DIRS) -latlas -lcblas -llapack_atlas \
 	-o removeoutliers
 
-modelspectrum : ModelSpectrum.cpp ModelSpectrum.h $(noisemodel_objects) \
-	Control.o Observations.o HyperGeo.o
+modelspectrum : ModelSpectrum.cpp ModelSpectrum.h \
+	$(noisemodel_objects) Control.o Observations.o HyperGeo.o Calendar.o
 	$(CPP) $(CPPFLAGS) ModelSpectrum.cpp $(noisemodel_objects) \
-        Control.o Observations.o HyperGeo.o \
+        Control.o Observations.o HyperGeo.o Calendar.o -DVERSION=$(VERSION) \
 	$(INCLUDE_DIRS) -latlas -lcblas -llapack_atlas -lfftw3 -lgsl \
         -o modelspectrum
 
-estimatespectrum : EstimateSpectrum.cpp Observations.o Control.o
+estimatespectrum : EstimateSpectrum.cpp Observations.o Control.o \
+	Calendar.o
 	$(CPP) $(CPPFLAGS) EstimateSpectrum.cpp Observations.o Control.o \
+	Calendar.o -DVERSION=$(VERSION) \
 	$(INCLUDE_DIRS) -lfftw3 \
         -o estimatespectrum
 
-date2mjd : date2MJD.cpp
-	$(CPP) $(CPPFLAGS) date2MJD.cpp -o date2mjd
+simulatenoise : SimulateNoise.cpp SimulateNoise.h $(noisemodel_objects) \
+	Control.o HyperGeo.o
+	$(CPP) $(CPPFLAGS) SimulateNoise.cpp $(noisemodel_objects) \
+        Control.o HyperGeo.o -DVERSION=$(VERSION) \
+        $(INCLUDE_DIRS) -latlas -lcblas -llapack_atlas -lfftw3 -lgsl \
+        -o simulatenoise
 
-mjd2date : MJD2date.cpp
-	$(CPP) $(CPPFLAGS) MJD2date.cpp -o mjd2date
+date2mjd : date2MJD.cpp Calendar.o
+	$(CPP) $(CPPFLAGS) date2MJD.cpp Calendar.o -o date2mjd
 
+mjd2date : MJD2date.cpp Calendar.o
+	$(CPP) $(CPPFLAGS) MJD2date.cpp Calendar.o -o mjd2date
+
+
+test_HyperGeo : test_HyperGeo.cpp HyperGeo.o
+	$(CPP) $(CPPFLAGS) test_HyperGeo.cpp HyperGeo.o \
+	$(INCLUDE_DIRS) -latlas -lcblas -llapack_atlas -lgsl -lgslcblas \
+	-o test_HyperGeo
+
+test_GaussRelation : test_GaussRelation.cpp HyperGeo.o
+	$(CPP) $(CPPFLAGS) test_GaussRelation.cpp HyperGeo.o \
+	$(INCLUDE_DIRS) -latlas -lcblas -llapack_atlas -lgsl -lgslcblas \
+	-o test_GaussRelation
+
+test_ARFIMA : test_ARFIMA.cpp ARFIMA.o NoiseModelBaseClass.h HyperGeo.o \
+	Control.o
+	$(CPP) $(CPPFLAGS) test_ARFIMA.cpp ARFIMA.o HyperGeo.o Control.o \
+	$(INCLUDE_DIRS) -latlas -lcblas -llapack_atlas -lgsl -lgslcblas \
+	-o test_ARFIMA
 
 #---------- Subroutines
 
@@ -70,7 +101,7 @@ MLE.o : MLE.cpp MLE.h
 	$(CPP) $(CPPFLAGS) -c MLE.cpp \
         $(INCLUDE_DIRS)
 
-Observations.o : Observations.cpp Observations.h Control.o
+Observations.o : Observations.cpp Observations.h Control.o Calendar.o
 	$(CPP) $(CPPFLAGS) -c Observations.cpp 
 
 Control.o : Control.cpp Control.h
@@ -98,7 +129,8 @@ LevinsonNoGap.o : LevinsonNoGap.cpp LevinsonNoGap.h Likelihood.o NoiseModel.o
 	$(CPP) $(CPPFLAGS) -c LevinsonNoGap.cpp \
         $(INCLUDE_DIRS)
 
-DesignMatrix.o : DesignMatrix.cpp DesignMatrix.h Control.o Observations.o
+DesignMatrix.o : DesignMatrix.cpp DesignMatrix.h Control.o Observations.o \
+	Calendar.o
 	$(CPP) $(CPPFLAGS) -c DesignMatrix.cpp \
         $(INCLUDE_DIRS)
 
@@ -131,3 +163,6 @@ GenGaussMarkov.o : GenGaussMarkov.cpp GenGaussMarkov.h HyperGeo.o
 
 HyperGeo.o : HyperGeo.cpp HyperGeo.h 
 	$(CPP) $(CPPFLAGS) -c HyperGeo.cpp 
+
+Calendar.o : Calendar.cpp Calendar.h
+	$(CPP) $(CPPFLAGS) -c Calendar.cpp

@@ -27,7 +27,7 @@
         int                 n,m,Ngaps,n_periodic_signals,n_offsets;
         double              dt,*H,*F,*periods,th;
         std::vector<double> offsets;
-        bool                first_difference;
+        bool                first_difference,quadratic_term;
         bool                seasonal_signal,halfseasonal_signal;
 
       public:

@@ -190,3 +190,29 @@
     return 1.0/pow(2.0*sin(0.5*lambda),2.0*d);
   }
 
+
+
+/*! Compute impulse response: h
+ */
+//---------------------------------------------------------
+  void Powerlaw::compute_impulse_response(int m, double* h)
+//---------------------------------------------------------
+  {
+    int     i;
+    double  I;
+
+    using namespace std;
+    if (estimate_spectral_index==true) {
+      cout << "Enter value of fractional difference d:";
+      cin >> d_fixed;
+    }
+
+    //--- Use Kasdin formula to compute h's
+    h[0] = 1.0;
+    for (i=1,I=1.0;i<m;i++,I+=1.0) h[i] = (d_fixed+I-1.0)/I*h[i-1];
+#ifdef DEBUG
+    cout << "d_fixed=" << d_fixed << endl;
+    for (i=0;i<10;i++) cout << "i=" << i << ", " << h[i] << endl;
+#endif
+  }
+

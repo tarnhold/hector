@@ -44,6 +44,7 @@ Likelihood* Likelihood::singleton = NULL;
 //--!!-------------------------------------
   {
     int           Ngaps;
+    double        fraction;
     Control       *control = Control::getInstance();
     Observations  *observations = Observations::getInstance();
     char          methodname[80];
@@ -52,7 +53,20 @@ Likelihood* Likelihood::singleton = NULL;
     Ngaps = observations->number_of_gaps();
     if (instanceFlag==false) {
       instanceFlag=true;
-      control->get_string("LikelihoodMethod",methodname);
+      try {
+        control->get_string("LikelihoodMethod",methodname);
+      }
+      //--- If keyword is not found, then use AmmarGrag is percentage of 
+      //    missing data is less than 50%, otherwise use FullCov.
+      catch (const char* str) {
+        fraction = static_cast<double>(Ngaps)/
+	     static_cast<double>(observations->number_of_observations());
+        if (fraction<0.5) {
+          strcpy(methodname,"AmmarGrag");
+        } else {
+          strcpy(methodname,"FullCov");
+        }
+      }   
       cout << endl << "----------------" << endl << "  " << methodname
            << endl << "----------------" << endl;
       if (strcmp(methodname,"Levinson")==0) {

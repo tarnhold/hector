@@ -113,6 +113,25 @@
 
   int main(int argc, char* argv[]) 
   {
+    Control   *control=NULL;
+
+    using namespace std;
+    //--- Open correct control file
+    if (argc==1) {
+      control = Control::getInstance("estimatetrend.ctl");
+    } else if (argc==2) {
+      control = Control::getInstance(argv[1]);
+    } else {
+      cerr << "correct usage: modelspectrum [controlfile.ctl]" << endl;
+      exit(EXIT_FAILURE);
+    }
+
+    cout << endl
+         << "************************************" << endl
+         << "    modelspectrum, version " << VERSION << endl
+         << "************************************" << endl;
+
+    //--- start modelspectrum
     ModelSpectrum PSD;
 
     PSD.compute();

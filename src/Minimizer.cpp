@@ -207,7 +207,7 @@
   void Minimizer::compute_inv_Fisher(double *C)
 //---------------------------------------------
   {
-    int           i,j,m,info;
+    int           i,j,m,info,k;
     char          Up='L';
     const double  ds=1.0e-3,TINY=1.0e-6;
     double        lnL_min,lnL[4],*X=NULL;
@@ -290,6 +290,7 @@
     using namespace std;
     //--- Compute covariance matrix
     C = new double[Nparam*Nparam];
+    memset(C,0,(Nparam*Nparam)*sizeof(double));
 
     try {
       compute_inv_Fisher(C);

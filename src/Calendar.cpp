@@ -1,0 +1,134 @@
+/*! \file    Calendar.cpp
+ *  \author  Machiel Bos
+ *  \version 1.1
+ *
+ * Since conversion between MJD and date is needed in DesignMatrix.cpp I 
+ * decided to create a new class with these subtourines. 
+ *
+ * \date 28/12/2012  Machiel Bos
+ * \date 12/ 1/2013  Machiel Bos
+ */
+//==============================================================================
+  #include <cmath>
+  #include <iostream>
+  #include <ostream>
+  #include <cstdlib>
+  #include "Calendar.h"
+
+//==============================================================================
+// Subroutines
+//==============================================================================
+
+//--------------------------------------------------------------------
+  void Calendar::caldat(long int jul, int& year, int& month, int& day)
+/*--------------------------------------------------------------------
+ * Compute calendar date for given julian date.
+ * 
+ * Example: YEAR = 1970, MONTH = 1, DAY = 1, JD = 2440588. 
+ * Reference: Fliegel, H. F. and van Flandern, T. C., Communications of 
+ * the ACM, Vol. 11, No. 10 (October, 1968).
+ *
+ * http://www.usno.navy.mil/USNO/astronomical-applications/
+ */
+  {
+    long int   l,n,i,j,k; 
+
+    using namespace std;
+    l = jul+68569;
+    n = 4*l/146097;
+    l = l-(146097*n+3)/4;
+    i = 4000*(l+1)/1461001;
+    l = l-1461*i/4+31;
+    j = 80*l/2447;
+    k = l-2447*j/80;
+    l = j/11;
+    j = j+2-12*l;
+    i = 100*(n-49)+i+l;
+
+    year  = i;
+    month = j;
+    day   = k;
+
+    if (year<1801 || year>2099) {
+      cerr << "year " << year << " is out of possible range!" << endl;
+      exit(EXIT_FAILURE);
+    }
+  }
+
+
+
+/*!Compute for given year, month and day the Julian day
+ * 
+ * Example: YEAR = 1970, MONTH = 1, DAY = 1, JD = 2440588. 
+ * Reference: Fliegel, H. F. and van Flandern, T. C., Communications of 
+ * the ACM, Vol. 11, No. 10 (October, 1968).
+ *
+ * http://www.usno.navy.mil/USNO/astronomical-applications/
+ *
+ * \param[in]  year       year
+ * \param[in]  month      month
+ * \param[in]  day        day
+ * \returns{Julian day}
+ */
+//---------------------------------------------------
+  long Calendar::julday(int year, int month, int day)
+//---------------------------------------------------
+  {
+    int       i,j,k;
+    long int  jul;
+
+    using namespace std;
+    if (year<1801 || year>2099) {
+      cerr << "year " << year << " is out of possible range!" << endl;
+      exit(EXIT_FAILURE);
+    }
+
+    i = year;
+    j = month;
+    k = day;
+
+    jul = k-32075+1461*(i+4800+(j-14)/12)/4+367*(j-2-(j-14)/12*12)/12 -
+          				   3*((i+4900+(j-14)/12)/100)/4;
+    return jul;
+  }
+
+
+
+/* For given MJD, compute date
+ */
+//----------------------------------------------------------------------------
+  void Calendar::compute_date(double MJD, int& year, int& month, int& day,
+                                       int& hour, int& minute, double& second)
+//----------------------------------------------------------------------------
+  {
+    long int     J;
+    double       f;
+
+    J      = (long int)(MJD + 2400001.0);
+    caldat(J,year,month,day);
+    f      = 24.0*(MJD-floor(MJD));
+    hour   = int(f);
+    f      = 60.0*(f - hour);
+    minute = int(f);
+    second = 60.0*(f - minute);
+  }
+
+
+
+/* Compute Modified Julian data
+ */
+//---------------------------------------------------------------------------
+  double Calendar::compute_MJD(int year, int month, int day, int hour,
+						   int minute, double second)
+//---------------------------------------------------------------------------
+  {
+    long int  J;
+    double    MJD;
+
+    J    = julday(year,month,day);
+    MJD  = double(J-2400001);  // count from midnight not 12 o'clock
+                               // the 0.5 is added late with the hours
+    MJD += hour/24.0 + minute/1440.0 + second/86400.0;
+
+    return MJD;
+  }

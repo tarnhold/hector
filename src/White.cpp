@@ -10,6 +10,8 @@
   #include "Control.h"
   #include <iostream>
   #include <ostream>
+  #include <cstdlib>
+  #include <cstring>
 
 //==============================================================================
 // Subroutines
@@ -90,3 +92,15 @@
   {
     return 1.0;
   }
+
+
+
+/*! Compute impulse response: h
+ */
+//------------------------------------------------------
+  void White::compute_impulse_response(int m, double* h)
+//------------------------------------------------------
+  {
+    memset(h,0,m*sizeof(double)); //--- zero padding
+    h[0] = 1.0;
+  } 

@@ -27,14 +27,15 @@
         std::vector<double> t,x,xhat,offsets;
         char                name[80],extension[20];
  
-        long   julday(int iyyy, int mm, int id);
         void   read_header(std::fstream& fp, int component);
+        void   read_external_header(std::fstream& fp);
         void   clean_offsets(void);
         void   write_header(std::fstream& fp);
         void   read_PSMSL_monthly(char filename[]);
         void   read_mom(char filename[]);
         void   read_enu(char filename[]);
         void   read_neu(char filename[]);
+        void   read_pos(char filename[]);
         void   determine_fs(void);
 
       public:

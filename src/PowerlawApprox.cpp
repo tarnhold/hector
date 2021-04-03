@@ -32,10 +32,9 @@
   PowerlawApprox::PowerlawApprox(double d_fixed_) : pi(4.0*atan(1.0))
 //---!!--------------------------------------------------------------
   {
-    double        dt,fs,ts;
     Control       *control=Control::getInstance();
-    Observations  *observations=Observations::getInstance();
 
+    using namespace std;
     //--- Check if we need to estimate the spectral index or not
     if (isnan(d_fixed_)==false) {
       estimate_spectral_index = false;
@@ -45,10 +44,13 @@
     }
 
     //--- How many days before t0 did the noise start to develop?
-    ts = control->get_double("TimeNoiseStart"); // number of days before t0
-    fs = observations->get_fs(); // sampling frequency in Hz
-    dt = 1.0/(24.0*3600.0*fs);   // sampling period in days
-    ms = static_cast<int>(ts/dt);// number of samples before t0
+    try {
+      ms = control->get_int("TimeNoiseStart"); // number of days before t0
+    }
+    catch (const char* str) {
+      cerr << str << endl;
+      exit(EXIT_FAILURE);
+    }
   }
 
 
@@ -72,6 +74,8 @@
     fftw_complex        *F_h1=NULL,*F_h2=NULL,*F_C=NULL;
 
     using namespace std;
+    //--- Observation.cpp should already have checked that label 
+    //    firstdifference exists.
     if (control->get_bool("firstdifference")==true) { 
       cerr << "PowerlawApprox: I don't allow first difference for " <<
               "Approximated power-law noise!" << endl;
@@ -217,7 +221,6 @@
 //-----------------------------------------------------
   {
     double   penalty=0.0,LARGE=1.0e8;
-    Control  *control=Control::getInstance();
 
     if (estimate_spectral_index==true) {
       //--- d
@@ -259,3 +262,15 @@
     exit(EXIT_FAILURE);
   }
 
+
+
+/*! Compute impulse response: h
+ */
+//---------------------------------------------------------------
+  void PowerlawApprox::compute_impulse_response(int m, double* h)
+//---------------------------------------------------------------
+  {
+    using namespace std;
+    cerr << "Please use pure Powerlaw class!" << endl;
+    exit(EXIT_FAILURE);
+  }

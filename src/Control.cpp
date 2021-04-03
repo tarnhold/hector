@@ -55,8 +55,9 @@
   void Control::find_label(const char label[])
 //--------------------------------------------
   {
-    int   i,m;
-    char  c,line[100],*retval;
+    int          i,m;
+    char         c,line[100],*retval;
+    static char  error_message[80];
 
     using namespace std;
     m  = strlen(label);
@@ -67,8 +68,8 @@
       if (i==m && strncmp(line,label,m)==0) return;       // if found...
       retval = fgets(line,100,fp_in); // else skip rest of line
     } while (c!=EOF);    
-    cerr << "Could not find label: " << label << endl;
-    exit(EXIT_FAILURE);
+    sprintf(error_message,"Could not find label: %s",label);
+    throw(const_cast<const char *>(error_message));
   }
 
 
@@ -87,13 +88,13 @@
     int      i1,i2,m;
     char     line[150],*retval;
 
+    n  = 0; // sofar no single value has been read
     find_label(label);
     retval = fgets(line,150,fp_in); // read the line containing the values
     m  = strlen(line)-1;   // -1 because of removing '\n' in count
     i1 = 0;
     while (i1<m && line[i1]==' ') i1++; // skip spaces
     i2 = i1;
-    n  = 0; // sofar no single value has been read
     while (i2<m) { // look for values as long as the line contains characters
       while (i2<m && !(line[i2]==' ')) i2++; // find end of value
       value[n] = new char[i2-i1+1];
@@ -121,6 +122,7 @@
     char    line[100],*retval;
 
     using namespace std;
+    strcpy(value,""); // If label is not found, return empty string
     find_label(label);
     retval = fgets(line,100,fp_in); // read the line containing the values
     m  = strlen(line);

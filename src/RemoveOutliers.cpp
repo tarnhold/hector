@@ -28,8 +28,15 @@
 //---!!-------------------------------
   {
     Control   *control=Control::getInstance();
-    
-    factor = control->get_double("IQ_factor");
+   
+    using namespace std;
+    try { 
+      factor = control->get_double("IQ_factor");
+    }
+    catch (const char* str) {
+      cerr << str << endl;
+      exit(EXIT_FAILURE);
+    }
   }
 
 
@@ -183,12 +190,31 @@
 // Main Program
 //==============================================================================
 
-  int main(void)
+  int main(int argc, char *argv[])
   {
-    Control         *control=Control::getInstance("removeoutliers.ctl");
+    Control         *control;
+
+    using namespace std;
+    //--- Open correct control file
+    if (argc==1) {
+      control = Control::getInstance("removeoutliers.ctl");
+    } else if (argc==2) {
+      control = Control::getInstance(argv[1]);
+    } else {
+      cerr << "correct usage: removeoutliers [controlfile.ctl]" << endl;
+      exit(EXIT_FAILURE);
+    }
+
+    cout << endl
+         << "************************************" << endl
+         << "    removeoutliers, version " << VERSION << endl
+         << "************************************" << endl;
+
+    //--- Now it's safe to call the other classes
     RemoveOutliers  outliers;
     Observations    *observations=Observations::getInstance();
 
+    //--- Start removeoutliers
     outliers.data_snooping();
     observations->save_mom(true);
 

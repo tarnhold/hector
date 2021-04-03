@@ -17,13 +17,26 @@
 // Main program
 //=============================================================================
 
-  int main(void)
+  int main(int argc, char *argv[])
   {
+    Control   *control;
+
     using namespace std;
+    //--- Open correct control file
+    if (argc==1) {
+      control = Control::getInstance("estimatetrend.ctl");
+    } else if (argc==2) {
+      control = Control::getInstance(argv[1]);
+    } else {
+      cerr << "correct usage: estimatetrend [controlfile.ctl]" << endl;
+      exit(EXIT_FAILURE);
+    }
+
+    //--- Start estimatetrend
     cout << endl 
-         << "***************************" << endl 
-         << "    Hector, version 1.0    " << endl    
-         << "***************************" << endl;
+         << "************************************" << endl 
+         << "    estimatetrend, version " << VERSION << endl    
+         << "************************************" << endl;
 
     Minimizer      minimizer;
     time_t         start,end;

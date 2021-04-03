@@ -28,10 +28,15 @@
 
     using namespace std;
     Nparam = 2;
-    //--- Sanity check
-    if (control->get_bool("firstdifference")==true) {
-      cerr << "Have not implemented first differenced Gauss-Markov!" << endl;
-      exit(EXIT_FAILURE);
+    //--- Sanity check (Observations.cpp already checks if firstdifference
+    //    keyword exists in the first place.
+    try {
+      if (control->get_bool("firstdifference")==true) {
+        cerr << "Have not implemented first differenced Gauss-Markov!" << endl;
+        exit(EXIT_FAILURE);
+      }
+    }
+    catch (const char* str) {
     }
   }
 
@@ -196,9 +201,9 @@
   {
     using namespace std;
     cout << "Enter parameter value of d: ";
-    cin >> d_PSD;
+    cin >> d_fixed;
     cout << "Enter parameter value of phi: ";
-    cin >> phi_PSD;
+    cin >> phi_fixed;
   }
 
 
@@ -209,6 +214,26 @@
   double GenGaussMarkov::compute_G(double lambda)
 //--------------------------------------------
   {
-    return 1.0/pow(4.0*(1-phi_PSD)*pow(sin(0.5*lambda),2.0) + 
-						pow(phi_PSD,2.0),d_PSD); 
+    return 1.0/pow(4.0*(1-phi_fixed)*pow(sin(0.5*lambda),2.0) + 
+						pow(phi_fixed,2.0),d_fixed); 
+  }
+
+
+
+/*! Compute impulse response: h
+ */
+//---------------------------------------------------------------
+  void GenGaussMarkov::compute_impulse_response(int m, double* h)
+//---------------------------------------------------------------
+  {
+    int    i;
+    double I;
+
+    //--- get values of noise parameters
+    setup_PSD();
+
+    //--- Use Langbein (2004) formula to compute h's
+    h[0] = 1.0;
+    for (i=1,I=1.0;i<m;i++,I+=1.0) 
+			h[i] = (d_fixed+I-1.0)/I*h[i-1]*(1.0-phi_fixed);
   }

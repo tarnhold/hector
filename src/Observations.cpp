@@ -15,6 +15,7 @@
  */
 //==============================================================================
   #include "Observations.h"
+  #include "Calendar.h"
   #include <iostream>
   #include <ostream>
   #include <iomanip>
@@ -52,9 +53,22 @@ Observations* Observations::singleton = NULL;
     //--- To ensure the right sampling frequency is read, fs=NaN at first
     fs=NaN;
 
-    control->get_string("DataFile",datafile);
-    control->get_string("DataDirectory",directory);
-    scale_factor = control->get_double("ScaleFactor");
+    //--- Get information on where to find the file with the observations
+    try {
+      control->get_string("DataFile",datafile);
+      control->get_string("DataDirectory",directory);
+    } catch (const char* str) {
+      cerr << str << endl;
+      exit(EXIT_FAILURE);
+    }
+
+    //--- Is a scale factor different from 1 required?
+    try {
+      scale_factor = control->get_double("ScaleFactor");
+    } catch (const char* str) {
+      scale_factor = 1.0;
+    }
+
     strcpy(filename,directory);
     n = strlen(filename);
     if (filename[n-1]!='/') strcat(filename,"/");
@@ -72,6 +86,9 @@ Observations* Observations::singleton = NULL;
     } else if (strcmp(extension,"neu")==0) {
       cout << "Data format: year fraction, North, East & Up" << endl;
       read_observations = &Observations::read_neu;
+    } else if (strcmp(extension,"pos")==0) {
+      cout << "Plate Boundary Observatory data format" << endl;
+      read_observations = &Observations::read_pos;
     } else if (strcmp(extension,"rlrdata")==0) {
       cout << "Data format: monthly PSMSL data" << endl;
       read_observations = &Observations::read_PSMSL_monthly;
@@ -90,8 +107,13 @@ Observations* Observations::singleton = NULL;
     (*this.*read_observations)(filename);
 
     //--- For the handling of the gaps I need to know some things
-    interpolate_data = control->get_bool("interpolate");
-    first_difference = control->get_bool("firstdifference");
+    try {
+      interpolate_data = control->get_bool("interpolate");
+      first_difference = control->get_bool("firstdifference");
+    } catch (const char* str) {
+      cerr << str << endl;
+      exit(EXIT_FAILURE);
+    }
 
     //--- Need to interpolate the data?
     if (interpolate_data==true) {
@@ -123,37 +145,6 @@ Observations* Observations::singleton = NULL;
     cout << "Filename              : " << filename << endl;
     cout << "Number of observations: " << t.size() << endl;
     cout << "Percentage of gaps    : " << double(Ngaps)/t.size()*100.0 << endl;
-  }
-
-
-//-------------------------------------------------------
-  long Observations::julday(int year, int month, int day)
-//-------------------------------------------------------
-/* Compute for given year, month and day the Julian day
- * 
- * Example: YEAR = 1970, MONTH = 1, DAY = 1, JD = 2440588. 
- * Reference: Fliegel, H. F. and van Flandern, T. C., Communications of 
- * the ACM, Vol. 11, No. 10 (October, 1968).
- *
- * http://www.usno.navy.mil/USNO/astronomical-applications/
- */
-  {
-    int       i,j,k;
-    long int  jul;
-
-    using namespace std;
-    if (year<1801 || year>2099) {
-      cerr << "year " << year << " is out of possible range!" << endl;
-      exit(EXIT_FAILURE);
-    }
-
-    i = year;
-    j = month;
-    k = day;
-
-    jul = k-32075+1461*(i+4800+(j-14)/12)/4+367*(j-2-(j-14)/12*12)/12 -
-                                           3*((i+4900+(j-14)/12)/100)/4;
-    return jul;
   }
 
 
@@ -201,6 +192,59 @@ Observations* Observations::singleton = NULL;
       }
     }
   }
+
+
+
+/*! Read header information from other file
+ */
+//---------------------------------------------------------
+  void Observations::read_external_header(std::fstream& fp)
+//---------------------------------------------------------
+  {
+    using namespace std;
+    int            component,day,month,year;
+    char           line[80],component_name[40];
+    double         MJD,comp[3];
+    Calendar       calendar;
+    Control        *control=Control::getInstance();
+
+    using namespace std;
+    //--- We need to know which component is requested.
+    try {
+      control->get_string("component",component_name);
+    } catch (const char* str) {
+      cerr << str << endl;
+      exit(EXIT_FAILURE);
+    }
+    if      (strcmp(component_name,"East")==0)  component=0;
+    else if (strcmp(component_name,"North")==0) component=1;
+    else if (strcmp(component_name,"Up")==0)    component=2;
+    else {
+      cerr << "Unknown component name: " << component_name << endl;
+      exit(EXIT_FAILURE);
+    }
+
+    //--- Clear offsets and start reading the lines
+    offsets.clear();
+    while (!fp.eof() ) {
+      fp.getline(line,80);
+      if (sscanf(line,"%d-%d-%d %lf %lf %lf",&day,&month,&year,&comp[0],
+						    &comp[1],&comp[2])==6) {
+        MJD = static_cast<double>(calendar.julday(year,month,day)-2400001);
+        //--- Mom files don't come with component information so must
+        //    look for the control file to know which component we need.
+        cout << "MJD=" << MJD << ", " << comp[0] << ", " << comp[1] 
+						<< ", " << comp[2] << endl;
+        if (isnan(comp[component])==true) {
+          offsets.push_back(MJD);
+        }
+      } else if (strlen(line)>0) {
+        cerr << "Could not understand line:" << line << endl;
+        exit(EXIT_FAILURE);
+      }
+    }
+  }
+
 
 
 /*! Clean up any found offsets. I mean, check if they fall between
@@ -298,6 +342,7 @@ Observations* Observations::singleton = NULL;
     int       MSL,flag,year,yearly,missing;
     char      line[80],complete_filename[120],fileout[120];
     long int  J;
+    Calendar  calendar;
 
     //--- Open file
     fs = 1.0/(30.4375*24.0*3600.0); // sampling frequency (Hz)
@@ -311,7 +356,7 @@ Observations* Observations::singleton = NULL;
     fp.getline(line,80);
     if (sscanf(line,"%lf;%d;%d;%d",&fraction,&MSL,&missing,&flag)==4) {
       year = static_cast<int>(floor(fraction));
-      J    = julday(year,1,0);
+      J    = calendar.julday(year,1,0);
       MJD  = static_cast<double>(J-2400001) + fmod(fraction,1.0)*365.25;
     } else {
       cerr << "Direct trouble reading the first line!" << endl;
@@ -344,9 +389,10 @@ Observations* Observations::singleton = NULL;
 //--------------------------------------------
   {
     using namespace std;
-    fstream    fp;
-    char       line[80];
+    fstream    fp,fp_offset;
+    char       line[80],offset_filename[80];
     double     MJD,obs,mod;
+    Control    *control=Control::getInstance();
 
     //--- Open file
     fp.open(filename,ios::in);
@@ -356,7 +402,20 @@ Observations* Observations::singleton = NULL;
     }
 
     //--- Read header information if it exists
-    read_header(fp);
+    try {
+      control->get_string("OffsetFile",offset_filename);
+      fp_offset.open(offset_filename,ios::in);
+      if (!fp_offset.is_open()) {
+        cerr << "Could not open " << offset_filename << endl;
+        exit(EXIT_FAILURE);
+      }
+      read_external_header(fp_offset);
+      fp_offset.close();
+    }
+    catch (const char* str) {
+      //--- No OffsetFile found, use data file instead
+      read_header(fp);
+    }
 
     //--- Read file
     while (fp.getline(line,80)!=NULL) {
@@ -378,13 +437,19 @@ Observations* Observations::singleton = NULL;
         t.push_back(MJD);
         x.push_back(scale_factor*obs);
       } else {
-        cerr << "Unable to understand line: " << line;
+        if (line[0]=='#' && fp!=fp_offset) {
+          cerr << "Cannot use header information from " << offset_filename 
+               << " and from the data file at the same time!" << endl;
+        } else {
+          cerr << "Unable to understand line: " << line;
+        }
         exit(EXIT_FAILURE);
       }
     }
 
     //--- Close file
     fp.close();
+    
 
     //--- Determine sampling period
     if (isnan(fs)) determine_fs();
@@ -435,16 +500,21 @@ Observations* Observations::singleton = NULL;
 //--------------------------------------------
   {
     using namespace std;
-    fstream    fp;
+    fstream       fp,fp_offset;
     const double  TINY=1.0e-4;
     bool          first_line=true;
-    char          line[80],component_name[20];
+    char          line[80],component_name[20],offset_filename[80];
     int           component;
     double        MJD,obs[3],MJD_old;
     Control       *control = Control::getInstance();
 
     //--- Which component needs to be analysed?
-    control->get_string("component",component_name);
+    try {
+      control->get_string("component",component_name);
+    } catch (const char* str) {
+      cerr << str << endl;
+      exit(EXIT_FAILURE);
+    }
     if      (strcmp(component_name,"East")==0)  component=0;
     else if (strcmp(component_name,"North")==0) component=1;
     else if (strcmp(component_name,"Up")==0)    component=2;
@@ -461,7 +531,19 @@ Observations* Observations::singleton = NULL;
     }
 
     //--- Read header information if it exists
-    read_header(fp,component);
+    try {
+      control->get_string("OffsetFile",offset_filename);
+      fp_offset.open(offset_filename,ios::in);
+      if (!fp_offset.is_open()) {
+        cerr << "Could not open " << offset_filename << endl;
+        exit(EXIT_FAILURE);
+      }
+      read_header(fp_offset,component);
+    }
+    catch (const char* str) {
+      //--- No OffsetFile found, use data file instead
+      read_header(fp,component);
+    }
 
     //--- Read file
     while (fp.getline(line,80)!=NULL) {
@@ -475,12 +557,18 @@ Observations* Observations::singleton = NULL;
           cout << "Problem: " << line << endl;
         }
       } else {
-        cerr << "Unable to understand line: " << line;
+        if (line[0]=='#' && fp!=fp_offset) {
+          cerr << "Cannot use header information from " << offset_filename 
+               << " and from the data file at the same time!" << endl;
+        } else {
+          cerr << "Unable to understand line: " << line;
+        }
         exit(EXIT_FAILURE);
       }
     }
 
     //--- Close file
+    if (fp_offset.is_open()) fp_offset.close();
     fp.close();
 
     //--- Determine sampling period
@@ -505,7 +593,12 @@ Observations* Observations::singleton = NULL;
     Control       *control = Control::getInstance();
 
     //--- Which component needs to be analysed?
-    control->get_string("component",component_name);
+    try {
+      control->get_string("component",component_name);
+    } catch (const char* str) {
+      cerr << str << endl;
+      exit(EXIT_FAILURE);
+    }
     if      (strcmp(component_name,"East")==0)  component=1;
     else if (strcmp(component_name,"North")==0) component=0;
     else if (strcmp(component_name,"Up")==0)    component=2;
@@ -588,6 +681,95 @@ Observations* Observations::singleton = NULL;
 
 
 
+/*! Read the Plate Boundary Observatory time-series format.
+ */
+//--------------------------------------------
+  void Observations::read_pos(char filename[])
+//--------------------------------------------
+  {
+    using namespace std;
+    bool          estimateoffsets;
+    fstream       fp,fp_offset;
+    char          line[300],component_name[20],offset_filename[80];
+    int           i,component;
+    double        MJD,obs[6];
+    Control       *control = Control::getInstance();
+
+    //--- Which component needs to be analysed?
+    try {
+      control->get_string("component",component_name);
+    } catch (const char* str) {
+      cerr << str << endl;
+      exit(EXIT_FAILURE);
+    }
+    if      (strcmp(component_name,"X")==0)     component=0;
+    else if (strcmp(component_name,"Y")==0)     component=1;
+    else if (strcmp(component_name,"Z")==0)     component=2;
+    else if (strcmp(component_name,"North")==0) component=3;
+    else if (strcmp(component_name,"East")==0)  component=4;
+    else if (strcmp(component_name,"Up")==0)    component=5;
+    else {
+      cerr << "Unknown component name: " << component_name << endl;
+      exit(EXIT_FAILURE);
+    }
+
+    //--- Read header information if it exists
+    try {
+      estimateoffsets = control->get_bool("estimateoffsets");
+    }
+    catch (const char* str) {
+      cerr << str << endl;
+      exit(EXIT_FAILURE);
+    }
+    if (estimateoffsets==true) {
+      try {
+        control->get_string("OffsetFile",offset_filename);
+        fp_offset.open(offset_filename,ios::in);
+        if (!fp_offset.is_open()) {
+          cerr << "Could not open " << offset_filename << endl;
+          exit(EXIT_FAILURE);
+        }
+        read_header(fp_offset,component);
+        fp_offset.close();
+      }
+      catch (const char* str) {
+        //--- No OffsetFile found....
+        cerr << str << endl;
+        exit(EXIT_FAILURE);
+      }
+    }
+
+    //--- Open file
+    fp.open(filename,ios::in);
+    if (!fp.is_open()) {
+      cerr << "Could not open " << filename << endl;
+      exit(EXIT_FAILURE);
+    }
+
+    //--- Skip header of 9 lines
+    for (i=0;i<9;i++)  fp.getline(line,300);
+
+    //--- Read file
+    while (fp.getline(line,300)!=NULL) {
+      if (sscanf(line,"%*d%*d%lf%lf%lf%lf%*f%*f%*f%*f%*f%*f%*f%*f%*f%lf%lf%lf",
+		  &MJD,&obs[0],&obs[1],&obs[2],&obs[3],&obs[4],&obs[5])==7) {
+        t.push_back(MJD);
+        x.push_back(scale_factor*obs[component]);
+      } else {
+        cerr << "Unable to understand line: " << line;
+        exit(EXIT_FAILURE);
+      }
+    }
+
+    //--- Close file
+    fp.close();
+
+    //--- Determine sampling period
+    if (isnan(fs)) determine_fs();
+  }
+
+
+
 /* For plotting purposes it might be interesting to save the observations in
  * MJD, Observations format
  */
@@ -601,8 +783,12 @@ Observations* Observations::singleton = NULL;
     char     filename[80];
     Control  *control=Control::getInstance();
 
-    control->get_string("OutputFile",filename);
-
+    try {
+      control->get_string("OutputFile",filename);
+    } catch (const char* str) {
+      cerr << str << endl;
+      exit(EXIT_FAILURE);
+    }
     cout.precision(5);
     cout << "--> " << filename << endl;
     fp.open(filename,ios::out);
