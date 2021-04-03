@@ -3,16 +3,21 @@
  *
  * Header file for MLEBase.cpp. 
  *
- * For offset detection I need more flexibility. Therefore I have split
- * compute_LeastSquares into prepare_covariance and compute_LeastSquares.
- * The first subroutine performs Cholesky decomposition or computes l1 and l2
- * whichever are the preperatory tasks needed to speed up Least-Squares.
- * If matrix C remains constant then I only have to do this once and afterwards
- * I can make changes in the design matrix H and quickly recompute the 
- * likelihood.
+ *  This script is part of Hector 1.7.2
  *
- * \date 13/1/2012  Coimbra library
- * \date  7/6/2016  Santa Clara
+ *  Hector is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  any later version.
+ *
+ *  Hector is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with Hector. If not, see <http://www.gnu.org/licenses/>
+ *
  */
 //=============================================================================
 

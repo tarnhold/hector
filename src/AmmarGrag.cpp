@@ -1,13 +1,31 @@
 /*! \file   AmmarGrag.cpp
  *  \author Machiel Bos
  *
- * My implementation of the Fast Toeplitz solver of Ammar and Gragg (1988).
+ *  My implementation of the Fast Toeplitz solver of Ammar and Gragg (1988).
+ *
+ *  Implementation of the ARFIMA noise model using the tricks of Sowell (1992),
+ *  Doornik and Ooms (2003) and Zinde-Wash (1988).
  *
  * References:
- * Ammar GS, Gragg WB (1988) Superfast solution of real positive definite 
- * Toeplitz systems. SIAM J Matrix Anal Appl, 9:61–76.
-
- * \date 9/2/2012  CIIMAR, Porto
+ * -----------
+ *  Ammar GS, Gragg WB (1988) Superfast solution of real positive definite 
+ *  Toeplitz systems. SIAM J Matrix Anal Appl, 9:61–76.
+ *
+ *  This script is part of Hector 1.7.2
+ *
+ *  Hector is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  any later version.
+ *
+ *  Hector is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with Hector.  If not, see <http://www.gnu.org/licenses/>
+ *
  */
 //==============================================================================
   #include "AmmarGrag.h"

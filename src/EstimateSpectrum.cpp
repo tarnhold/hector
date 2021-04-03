@@ -1,6 +1,5 @@
 /*! \file    EstimateSpectrum.cpp
  *  \author  Machiel Bos
- *  \version 1.0
  * 
  *  A program to estimate the Power Spectral Density of a data set. The data 
  *  set consists out of two columns (MJD + data) or three (MJD, data and 
@@ -13,11 +12,21 @@
  *  Spectral Analysis and Filter Theory in Applied Geophysics by
  *  Burkhard Buttkus (2000), Springer.
  *
- * \date 16/ 9/2004  Vila Nova de Gaia
- * \date 13/ 7/2005  Vila Nova de Gaia
- * \date  6/ 7/2009  CIIMAR, Porto
- * \date 25/ 7/2011  Coimbra
- * \date 12/11/2012  Santa Clara
+ *  This script is part of Hector 1.7.2
+ *
+ *  Hector is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  any later version.
+ *
+ *  Hector is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with Hector. If not, see <http://www.gnu.org/licenses/>
+ *
  */
 //==============================================================================
   #include <iostream>

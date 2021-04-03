@@ -1,12 +1,20 @@
-# Makefile for the hector-1.6 programs
+# Makefile for the hector-1.7 programs
 #
-#  2/10/2012 Machiel Bos
-# 13/ 1/2013 Machiel Bos
-# 11/ 6/2014 Machiel Bos
-# 16/ 3/2015 Machiel Bos
-# 26/10/2015 Machiel Bos
-#  3/12/2015 Machiel Bos
-# 31/10/2016 Machiel Bos
+#  This script is part of Hector 1.7.2
+#
+#  Hector is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  any later version.
+#
+#  Hector is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with Hector.  If not, see <http://www.gnu.org/licenses/>
+#
 #===============================================================================
 
 VERSION=1.6
