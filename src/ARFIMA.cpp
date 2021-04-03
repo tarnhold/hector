@@ -115,11 +115,10 @@
          } else {
            rho[i] = 1.0/complex<double>(roots[2*i],roots[2*i+1]);
          }
-         //--- Check if stationarity condition has been met
-         if (abs(rho[i])>1.0) {
-           cerr << "root " << i << " is larger than 1 : " << rho[i] << endl;
-       //    exit(EXIT_FAILURE);
-         }
+         //--- In earlier versions I checked if size of rho[i] was smaller
+         //    than 1 to see if stationanity condition was met. However,
+         //    this happens sometimes during the minimalisation search and
+         //    is taken care of by the penalty function.
        }
        //--- free memory
        gsl_poly_complex_workspace_free (w);
@@ -520,7 +519,10 @@
     using namespace std;
     int               i;
     double            penalty=0.0,LARGE=1.0e8;
-    complex<double>   rho[p];
+    complex<double>   *rho;
+
+    //--- Allocate memory for rho
+    rho = new complex<double>[p];
 
     //--- AR : I think create_ARFIMA does not choke on rho's<1
     if (p>0) {
@@ -558,6 +560,9 @@
     cout << "Penalty: phi=" << param[0] << endl;
     if (estimate_spectral_index==true) cout<<"Penalty: d="<< param[p+q] << endl;
 #endif
+
+    //--- Clean up mess
+    delete[] rho;
 
     return penalty; 
   }

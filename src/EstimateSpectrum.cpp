@@ -316,6 +316,24 @@
 
 
 
+/*! Check if character array contains a integer
+ */
+//-------------------------
+  bool IsInteger(char *str)
+//-------------------------
+  {
+    int   i=0;
+
+    using namespace std;
+    while (str[i]!='\0') { 
+      if (isdigit(str[i])==false) return false;
+      i++;
+    }
+    if (i>0) return true; else return false;
+  }
+
+       
+
 //==============================================================================
 // Main program
 //==============================================================================
@@ -329,18 +347,28 @@
     //--- Open correct control file
     if (argc==1) {
       control = Control::getInstance("estimatespectrum.ctl");
-    } else if (argc==2) {
-      control = Control::getInstance("estimatespectrum.ctl");
-      segments = atoi(argv[1]);
-    } else if (argc==3) {
-      segments = atoi(argv[1]);
-      control = Control::getInstance(argv[2]);
     } else {
-      cerr << "estimatespectrum [number of segments (not counting overlaps)]" 
-           << " [controlfile.ctl]" << endl;
-      cerr << "If controlfile.ctl is given, the number of segments is required"
-           << endl;
-      exit(EXIT_FAILURE);
+      if (IsInteger(argv[1])==true) {
+        segments = atoi(argv[1]);
+        if (segments<=0) {
+          cerr << "Unacceptable number of segments: " << segments << endl;
+          exit(EXIT_FAILURE);
+        }
+        if (argc==2)      control= Control::getInstance("estimatespectrum.ctl");
+        else if (argc==3) control= Control::getInstance(argv[2]); 
+        else {
+          cerr << "estimatespectrum [number of segments (not counting "
+               << "overlaps)] [controlfile.ctl]" << endl; 
+          exit(EXIT_FAILURE);
+        }
+      } else {
+        if (argc==2) control = Control::getInstance(argv[1]); 
+        else {
+          cerr << "estimatespectrum [number of segments (not counting "
+               << "overlaps)] [controlfile.ctl]" << endl; 
+          exit(EXIT_FAILURE);
+        }
+      }
     }
 
     //--- Start estimatespectrum

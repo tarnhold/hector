@@ -151,8 +151,13 @@
 
     Local              local;
     int                i;
-    complex<double>    x[n+1],y1[n+1],z1[n+1];
+    complex<double>    *x,*y1,*z1;
     complex<double>    h,k1y,k1z,k2y,k2z,k3y,k3z,k4y,k4z,dydx;
+
+    //--- Create arrays
+    x  = new complex<double>[n+1];
+    y1 = new complex<double>[n+1];
+    z1 = new complex<double>[n+1];
 
     //--- compute stepsize
     h = z/static_cast< complex<double> >(n);
@@ -184,6 +189,11 @@
 #ifdef DEBUG
     cout << scientific << setprecision(15) << "y1=" << y1[i] << endl;
 #endif
+
+    //--- Clean up mess
+    delete[] x;
+    delete[] y1;
+    delete[] z1;
 
     return y1[n];
   }

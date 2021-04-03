@@ -33,7 +33,11 @@
 
     using namespace std;
     //--- Make use of the fact that FFT can be performed in parallel
-    Nthreads = omp_get_max_threads();
+    #if OMP == 1
+      Nthreads = omp_get_max_threads();
+    #else
+      Nthreads = 1;
+    #endif
     cout << endl << "Number of CPU's used (threads) = " << Nthreads 
          << endl << endl;
 
@@ -99,7 +103,11 @@
     }
     #pragma omp parallel for private(i,offset)
     for (i=0;i<n;i++) {
-      offset = ny*(omp_get_thread_num ());
+      #if OMP == 1
+        offset = ny*(omp_get_thread_num ());
+      #else 
+        offset = 0; 
+      #endif
       cblas_dcopy(m,&H[m*i],1,&dummy[offset],1);
       fftw_execute_dft_r2c(plan_forward,&dummy[offset],&F_H[nyc*i]);
     }
@@ -111,7 +119,11 @@
     fftw_execute_dft_r2c(plan_forward,dummy,F_x);
     #pragma omp parallel for private(i,offset)
     for (i=0;i<Ngaps;i++) {
-      offset = ny*(omp_get_thread_num ());
+      #if OMP == 1
+        offset = ny*(omp_get_thread_num ());
+      #else
+        offset = 0;
+      #endif
       cblas_dcopy(m,&F[m*i],1,&dummy[offset],1);
       fftw_execute_dft_r2c(plan_forward,&dummy[offset],&F_F[nyc*i]);
     }
@@ -243,8 +255,12 @@
     for (i=0;i<n_columns;i++) {
 
       //--- Which thread is computing this?
-      offset1 = nyc*(omp_get_thread_num ());
-      offset2 = ny*(omp_get_thread_num ());
+      #if OMP == 1
+        offset1 = nyc*(omp_get_thread_num ());
+        offset2 = ny*(omp_get_thread_num ());
+      #else
+        offset1 = offset2 = 0;
+      #endif
 
       for (j=0;j<nyc;j++) {
         F_dummy[offset1+j][0] = 

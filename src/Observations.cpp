@@ -377,7 +377,8 @@ Observations* Observations::singleton = NULL;
         cerr << "Unable to understand line: " << line;
         exit(EXIT_FAILURE);
       }
-    } while (fp.getline(line,80)!=NULL);
+      fp.getline(line,80);
+    } while (!fp.eof());
 
     //--- Close file
     fp.close();
@@ -404,6 +405,7 @@ Observations* Observations::singleton = NULL;
     }
 
     //--- Read header information if it exists
+    read_header(fp);
     try {
       control->get_string("OffsetFile",offset_filename);
       fp_offset.open(offset_filename.c_str(),ios::in);
@@ -416,11 +418,11 @@ Observations* Observations::singleton = NULL;
     }
     catch (const char* str) {
       //--- No OffsetFile found, use data file instead
-      read_header(fp);
     }
 
     //--- Read file
-    while (fp.getline(line,80)!=NULL) {
+    fp.getline(line,80);
+    while (!fp.eof()) {
       if (sscanf(line,"%lf %lf %lf",&MJD,&obs,&mod)==3) {
 #ifdef DEBUG
         cout << "Found x & xhat: " << obs << ", " << mod << endl;
@@ -439,14 +441,10 @@ Observations* Observations::singleton = NULL;
         t.push_back(MJD);
         x.push_back(scale_factor*obs);
       } else {
-        if (line[0]=='#' && fp!=fp_offset) {
-          cerr << "Cannot use header information from " << offset_filename 
-               << " and from the data file at the same time!" << endl;
-        } else {
-          cerr << "Unable to understand line: " << line;
-        }
+        cerr << "Unable to understand line: " << line;
         exit(EXIT_FAILURE);
       }
+      fp.getline(line,80);
     }
 
     //--- Close file
@@ -535,6 +533,7 @@ Observations* Observations::singleton = NULL;
     }
 
     //--- Read header information if it exists
+    read_header(fp,component);
     try {
       control->get_string("OffsetFile",offset_filename);
       fp_offset.open(offset_filename.c_str(),ios::in);
@@ -542,15 +541,16 @@ Observations* Observations::singleton = NULL;
         cerr << "Could not open " << offset_filename << endl;
         exit(EXIT_FAILURE);
       }
-      read_header(fp_offset,component);
+      read_external_header(fp_offset);
+      fp_offset.close();
     }
     catch (const char* str) {
       //--- No OffsetFile found, use data file instead
-      read_header(fp,component);
     }
 
     //--- Read file
-    while (fp.getline(line,80)!=NULL) {
+    fp.getline(line,80);
+    while (!fp.eof()) {
       if (sscanf(line,"%lf%lf%lf%lf",&MJD,&obs[0],&obs[1],&obs[2])==4) {
         if (first_line==true || MJD-MJD_old>TINY) {
           t.push_back(MJD);
@@ -561,14 +561,10 @@ Observations* Observations::singleton = NULL;
           cout << "Problem: " << line << endl;
         }
       } else {
-        if (line[0]=='#' && fp!=fp_offset) {
-          cerr << "Cannot use header information from " << offset_filename 
-               << " and from the data file at the same time!" << endl;
-        } else {
-          cerr << "Unable to understand line: " << line;
-        }
+        cerr << "Unable to understand line: " << line;
         exit(EXIT_FAILURE);
       }
+      fp.getline(line,80);
     }
 
     //--- Close file
@@ -645,7 +641,8 @@ Observations* Observations::singleton = NULL;
     }
 
     //--- Read file
-    while (fp.getline(line,120)!=NULL) {
+    fp.getline(line,120);
+    while (!fp.eof()) {
       if (sscanf(line,"%lf%lf%lf%lf",&yearfraction,&obs[0],&obs[1],
 							   &obs[2])==4) {
         MJD = floor(365.25*(yearfraction-1970.0)+40587.0+0.1)-0.5; 
@@ -672,6 +669,7 @@ Observations* Observations::singleton = NULL;
         cerr << "Unable to understand line: " << line;
         exit(EXIT_FAILURE);
       }
+      fp.getline(line,120);
     }
 
     //--- Close file
@@ -740,8 +738,6 @@ Observations* Observations::singleton = NULL;
       }
       catch (const char* str) {
         //--- No OffsetFile found....
-        cerr << str << endl;
-        exit(EXIT_FAILURE);
       }
     }
 
@@ -756,7 +752,8 @@ Observations* Observations::singleton = NULL;
     for (i=0;i<9;i++)  fp.getline(line,300);
 
     //--- Read file
-    while (fp.getline(line,300)!=NULL) {
+    fp.getline(line,300);
+    while (!fp.eof()) {
       if (sscanf(line,"%*d%*d%lf%lf%lf%lf%*f%*f%*f%*f%*f%*f%*f%*f%*f%lf%lf%lf",
 		  &MJD,&obs[0],&obs[1],&obs[2],&obs[3],&obs[4],&obs[5])==7) {
         t.push_back(MJD);
@@ -765,6 +762,7 @@ Observations* Observations::singleton = NULL;
         cerr << "Unable to understand line: " << line;
         exit(EXIT_FAILURE);
       }
+      fp.getline(line,300);
     }
 
     //--- Close file

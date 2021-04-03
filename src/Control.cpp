@@ -90,10 +90,17 @@
   {
     using namespace std;
     string        str,line;
+    string        whitespaces (" \t");
+    size_t        found;
     stringstream  fs_line;
 
     find_label(label); // point file pointer to the right location
     getline(fs,line);  // read the whole line into string 'line'
+
+    //--- Trim trailing spaces
+    found = line.find_last_not_of(whitespaces);
+    if (found!=string::npos) line.erase(found+1);
+
     fs_line << line;   // copy line into the string-stream
     n=0;
     while (fs_line.good()==true && fs_line.eof()!=true) {

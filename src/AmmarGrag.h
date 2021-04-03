@@ -9,7 +9,9 @@
 
   #ifndef __AMMARGRAG
     #define __AMMARGRAG
-    #include <omp.h>
+    #if OMP == 1
+      #include <omp.h>
+    #endif
     #include "Likelihood.h"
     #include <complex>
     #include <fftw3.h>
