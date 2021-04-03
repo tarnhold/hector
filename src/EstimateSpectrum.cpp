@@ -146,13 +146,13 @@
     mean=0.0;
     j   =0;
     for (i=0;i<n;i++) {
-      if (!isnan(x[i])) {
+      if (!std::isnan(x[i])) {
         mean += x[i];
         j++;
       }
     }
     mean /= static_cast<double>(j);
-    for (i=0;i<n;i++) if (!isnan(x[i])) x[i] -= mean;
+    for (i=0;i<n;i++) if (!std::isnan(x[i])) x[i] -= mean;
   }
  
 
@@ -170,7 +170,7 @@
 //----------------------------------------------------------------------
   {
     using namespace std;
-    Observations    *data;
+    Observations    &data=Observations::getInstance();
     int             i,j,L,K,n,k,skipped_segments;
     double          Variance_xt,Variance_Gf,U,scale,Re,Im,fraction;
     double          *t,*y,*dummy,MJD,obs,mod,dt,freq[2],percentage_gaps;
@@ -182,11 +182,11 @@
     fftw_plan       plan_forward;
     fftw_complex    *Y=NULL;
     double         (*windowfunction)(int, int, double);
-    Control        *control=Control::getInstance();
+    Control        &control=Control::getInstance();
 
     //--- Which window function needs to be applied?
     try {
-      control->get_string("WindowFunction",name);
+      control.get_string("WindowFunction",name);
       if (name.compare("Parzen")==0) {
         windowfunction = Parzen; 
       } else if (name.compare("Hann")==0) {
@@ -205,7 +205,7 @@
     
     //--- Fraction which determines how much the window function is applied    
     try {
-      fraction = control->get_double("Fraction");
+      fraction = control.get_double("Fraction");
       if (fraction<0.0 || fraction>1.0) {
         cerr << "fraction must lie between 0 and 1, not:" << fraction << endl;
         exit(EXIT_FAILURE);
@@ -220,10 +220,8 @@
 
     //--- Read data from file. Note that the Observation class fills the
     //    missing data with NaN's.
-    data = new Observations();
-    dt   = 1.0/data->get_fs();
-    data->get_values(n,&t,&y); // only arrays t and y are needed from now on.
-    delete data;
+    dt   = 1.0/data.get_fs();
+    data.get_values(n,&t,&y); // only arrays t and y are needed from now on.
 
     //--- First, compute the segment length: L= n/segments
     //    FFTW does not require a length that is  a power of 2
@@ -263,7 +261,7 @@
  					1000.0 * sqrt(2.0/(L*dt)) << endl;
 
     //--- Remove Mean to improve results at low frequencies
-    remove_mean(y,N);
+    //remove_mean(y,N);
 
 #ifdef DEBUG
     fp_res = fopen("residuals.dat","w");
@@ -365,12 +363,18 @@
     using namespace std;
     fstream       fp;
     int           i;
-    char          file_out[80];
+    string        filename;
+    Control       &control=Control::getInstance();
 
-    strcpy(file_out,"estimatespectrum.out");
-    fp.open(file_out,fstream::out); 
+    try {
+      control.get_string("OutputFile",filename);
+    } catch (exception &e) {
+      filename = "estimatespectrum.out";
+    }
+    cout << "--> " << filename << endl;
+    fp.open(filename.c_str(),ios::out);
     if (!fp.is_open()) {
-      cerr << "Could not open " << file_out << endl;
+      cerr << "Could not open " << filename << endl;
       exit(EXIT_FAILURE);
     }
     //--- zero frequency is normally skipped.
@@ -424,13 +428,12 @@
 
   int main(int argc, char *argv[])
   {
-    Control   *control;
     int       segments=4;
 
     using namespace std;
     //--- Open correct control file
     if (argc==1) {
-      control = Control::getInstance("estimatespectrum.ctl");
+      Control &control = Control::getInstance("estimatespectrum.ctl");
     } else {
       if (IsInteger(argv[1])==true) {
         segments = atoi(argv[1]);
@@ -438,15 +441,17 @@
           cerr << "Unacceptable number of segments: " << segments << endl;
           exit(EXIT_FAILURE);
         }
-        if (argc==2)      control= Control::getInstance("estimatespectrum.ctl");
-        else if (argc==3) control= Control::getInstance(argv[2]); 
+        if (argc==2)      
+		Control &control= Control::getInstance("estimatespectrum.ctl");
+        else if (argc==3) 
+                Control &control= Control::getInstance(argv[2]); 
         else {
           cerr << "estimatespectrum [number of segments (not counting "
                << "overlaps)] [controlfile.ctl]" << endl; 
           exit(EXIT_FAILURE);
         }
       } else {
-        if (argc==2) control = Control::getInstance(argv[1]); 
+        if (argc==2) Control &control = Control::getInstance(argv[1]); 
         else {
           cerr << "estimatespectrum [number of segments (not counting "
                << "overlaps)] [controlfile.ctl]" << endl; 

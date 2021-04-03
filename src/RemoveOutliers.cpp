@@ -27,11 +27,11 @@
   RemoveOutliers::RemoveOutliers(void)
 //---!!-------------------------------
   {
-    Control   *control=Control::getInstance();
+    Control   &control=Control::getInstance();
    
     using namespace std;
     try { 
-      factor = control->get_double("IQ_factor");
+      factor = control.get_double("IQ_factor");
     }
     catch (exception &e) {
       cerr << e.what() << endl;
@@ -47,7 +47,7 @@
   void RemoveOutliers::compute_LeastSquares(int& m, double **r)
 //-------------------------------------------------------------
   {
-    Observations   *observations=Observations::getInstance();
+    Observations   &observations=Observations::getInstance();
     DesignMatrix   *designmatrix=NULL;
     int            i,j,n;
     const double   TINY=1.0e-6;
@@ -56,8 +56,8 @@
 
     using namespace std;
     //--- get observations and design matrix H
-    observations->remove_gaps();
-    observations->get_values(m,&t,&x);
+    observations.remove_gaps();
+    observations.get_values(m,&t,&x);
     cout << "after removal gaps, m=" << m << endl;
     designmatrix = DesignMatrix::getInstance();
     designmatrix->get_H(n,&H);
@@ -108,7 +108,7 @@
 #endif
 
     //--- Make sure a new design matrix will be constucted
-    designmatrix->destroyInstance();
+    designmatrix->resetInstance();
        
     //--- free memory
     delete[] theta;
@@ -145,7 +145,7 @@
   {
     using namespace std;
     const double   NaN=sqrt(-1.0);
-    Observations   *observations=Observations::getInstance();
+    Observations   &observations=Observations::getInstance();
     int            m,bad_points,i,j;
     vector<double> q;
     double         *r,interquartile,median,lower_boundary,upper_boundary;
@@ -171,11 +171,12 @@
       bad_points=0;
       for (i=0;i<m;i++) {
         if (r[i]<lower_boundary || r[i]>upper_boundary) {
-          cout << "bad point index = " << i << ", value=" << r[i] << endl;
-          observations->set_one_x(i,NaN);
+          //cout << "bad point index = " << i << ", value=" << r[i] << endl;
+          observations.set_one_x(i,NaN);
           bad_points++;
         }
       }
+      cout << "Found " << bad_points << " bad points." << endl;
       
       //--- free memory for next run
       delete[] r;
@@ -192,14 +193,12 @@
 
   int main(int argc, char *argv[])
   {
-    Control         *control;
-
     using namespace std;
     //--- Open correct control file
     if (argc==1) {
-      control = Control::getInstance("removeoutliers.ctl");
+      Control &control = Control::getInstance("removeoutliers.ctl");
     } else if (argc==2) {
-      control = Control::getInstance(argv[1]);
+      Control &control = Control::getInstance(argv[1]);
     } else {
       cerr << "correct usage: removeoutliers [controlfile.ctl]" << endl;
       exit(EXIT_FAILURE);
@@ -212,11 +211,11 @@
 
     //--- Now it's safe to call the other classes
     RemoveOutliers  outliers;
-    Observations    *observations=Observations::getInstance();
+    Observations    &observations=Observations::getInstance();
 
     //--- Start removeoutliers
     outliers.data_snooping();
-    observations->save_mom(true);
+    observations.save_mom(true);
 
     return EXIT_SUCCESS;
   }

@@ -29,10 +29,9 @@
   Minimizer::Minimizer(void)
 //---!!---------------------
   {
-    NoiseModel  *noisemodel = NoiseModel::getInstance();
+    NoiseModel  &noisemodel = NoiseModel::getInstance();
 
-    using namespace std;
-    Nparam = noisemodel->get_Nparam();
+    Nparam = noisemodel.get_Nparam();
     param  = new double[Nparam];
     error  = new double[Nparam];
   }
@@ -59,9 +58,9 @@
   double my_f(const gsl_vector *v, void *dummy)
 //---------------------------------------------
   {
-     Likelihood    *likelihood=Likelihood::getInstance();
+     Likelihood    &likelihood=Likelihood::getInstance();
 
-     return likelihood->compute(v->data);
+     return likelihood.compute(v->data);
   }
     
 
@@ -78,9 +77,9 @@
 //---------------------------
   {
     int           i;
-    double        sigma_eta,lndeterminant,*theta=NULL,FTOL=1.0e-4;
-    NoiseModel    *noisemodel  = NoiseModel::getInstance();
-    Likelihood    *likelihood  = Likelihood::getInstance();
+    double        sigma_eta,ln_det_C,*theta=NULL,FTOL=1.0e-4;
+    NoiseModel    &noisemodel  = NoiseModel::getInstance();
+    Likelihood    &likelihood  = Likelihood::getInstance();
 
     //--- GSL minimizer variables
     const gsl_multimin_fminimizer_type *T = gsl_multimin_fminimizer_nmsimplex2;
@@ -96,12 +95,16 @@
     if (Nparam==0) {
       //--- no Minimizer required, simple OLS
       cout << "performing Ordinary Least-Squares" << endl;
-      likelihood->compute_LeastSquares(param,lndeterminant,sigma_eta);
-      likelihood->set_sigma_eta(sigma_eta);
+      likelihood.prepare_covariance(param);
+      likelihood.compute_LeastSquares(param);
       //--- Even if no noise parameters are estimated, it is good to show
-      //    which noise model was chosen and what its amplitude is
-      noisemodel->show(param,error);
-      show_BIC();
+      //    which noise model was chosen and what its amplitude is. The
+      //    error array is thus not filled but this is okay because nothing
+      //    is shown.
+      sigma_eta = likelihood.get_sigma_eta();
+      noisemodel.show(param,error,sigma_eta);
+      likelihood.compute_L_and_ICs(param);
+      show_L_and_ICs();
       cout << endl;
     } else {    
       //--- Find minimum using Nelder-Mead Simplex method ---------
@@ -158,15 +161,17 @@
       gsl_vector_free(ss);
       gsl_multimin_fminimizer_free (s);
 
-      //--- Compute confidence intervals for noise parameters
-      compute_confidence_intervals();
+      //--- Compute confidence intervals for noise parameters. This sets
+      //    the values for the error-array used later in noisemode->show.
+      compute_confidence_intervals(param);
 
       //--- Show results in a way a human can understand
-      noisemodel->show(param,error);
+      sigma_eta = likelihood.get_sigma_eta();
+      noisemodel.show(param,error,sigma_eta);
     }
 
     //--- Show results of least-squares
-    likelihood->show_leastsquares();
+    likelihood.show_leastsquares();
   }
 
 
@@ -208,27 +213,36 @@
 
 
 /* Show L_min, BIC and AIC
+ * Nparam is a class parameter
  */
-//------------------------------
-  void Minimizer::show_BIC(void)
-//------------------------------
+//------------------------------------
+  void Minimizer::show_L_and_ICs(void)
+//------------------------------------
   {
-    int           m;
-    double        lnL_min;
-    Likelihood    *likelihood   = Likelihood::getInstance();
-    Observations  *observations = Observations::getInstance();
-   
-    using namespace std; 
-    //--- Compute log(likelihood) at minimum
-    lnL_min = likelihood->compute(param);
+    using namespace std;
+    int             k,n;
+    double          *H,ln_L,AIC,BIC;
+    DesignMatrix    *designmatrix = DesignMatrix::getInstance();
+    Likelihood      &likelihood = Likelihood::getInstance();
+ 
+    //--- How many parameters are estimated? 
+    designmatrix->get_H(n,&H);
+    k = Nparam + n + 1;
+
+    ln_L     = likelihood.get_ln_L();
+    AIC      = likelihood.get_AIC();
+    BIC      = likelihood.get_BIC();
+
     cout << endl << "Likelihood value" << endl << "--------------------"
          << endl;
-    //--- Remember, I use -L to find minimum instead of maximum
-    m = observations->number_of_observations()-observations->number_of_gaps();
     cout << fixed << setprecision(3);
-    cout << "min log(L)=" << -lnL_min << endl;
-    cout << "AIC       =" << 2.0*(Nparam + lnL_min) << endl;
-    cout << "BIC       =" << Nparam*log(m) + 2.0*lnL_min << endl;
+    cout << "min log(L)=" << ln_L << endl;
+    cout << "k         =" << n << " + " << Nparam << " + 1 = " << k << endl;
+    cout << "AIC       =" << AIC << endl;
+    cout << "BIC       =" << BIC << endl;
+
+    //--- free memory
+    delete[] H;
   }
 
 
@@ -243,53 +257,50 @@
     char          Up='L';
     const double  ds=1.0e-3,TINY=1.0e-6;
     double        lnL_min,lnL[4],*X=NULL;
-    Likelihood    *likelihood   = Likelihood::getInstance();
-    NoiseModel    *noisemodel   = NoiseModel::getInstance();
+    Likelihood    &likelihood   = Likelihood::getInstance();
+    NoiseModel    &noisemodel   = NoiseModel::getInstance();
 
     using namespace std;
     //--- Create array to hold parameters
     X = new double[Nparam];
 
-    lnL_min = likelihood->compute(param);
+    lnL_min = likelihood.compute(param);
     for (i=0;i<Nparam;i++) {
       for (j=i;j<Nparam;j++) {
         //--- diagonal terms
         if (j==i) {
           //--- Investigate both sides of the minimum
           fill_X(i, ds, i, 0.0, X); 
-          if (noisemodel->compute_penalty(X)>0.0) throw "out of range";
-          lnL[0] = likelihood->compute(X);
+          if (noisemodel.compute_penalty(X)>0.0) throw "out of range";
+          lnL[0] = likelihood.compute(X);
           fill_X(i,-ds, i, 0.0, X); 
-          if (noisemodel->compute_penalty(X)>0.0) throw "out of range";
-          lnL[1] = likelihood->compute(X);
+          if (noisemodel.compute_penalty(X)>0.0) throw "out of range";
+          lnL[1] = likelihood.compute(X);
           C[i + Nparam*i] = (lnL[0]+lnL[1] - 2.0*lnL_min)/pow(ds,2.0);
         } else {
           fill_X(i, 0.5*ds, j, 0.5*ds, X); 
-          if (noisemodel->compute_penalty(X)>0.0) throw "out of range";
-          lnL[0] = likelihood->compute(X);
+          if (noisemodel.compute_penalty(X)>0.0) throw "out of range";
+          lnL[0] = likelihood.compute(X);
           fill_X(i,-0.5*ds, j, 0.5*ds, X); 
-          if (noisemodel->compute_penalty(X)>0.0) throw "out of range";
-          lnL[1] = likelihood->compute(X);
+          if (noisemodel.compute_penalty(X)>0.0) throw "out of range";
+          lnL[1] = likelihood.compute(X);
           fill_X(i, 0.5*ds, j,-0.5*ds, X); 
-          if (noisemodel->compute_penalty(X)>0.0) throw "out of range";
-          lnL[2] = likelihood->compute(X);
+          if (noisemodel.compute_penalty(X)>0.0) throw "out of range";
+          lnL[2] = likelihood.compute(X);
           fill_X(i,-0.5*ds, j,-0.5*ds, X); 
-          if (noisemodel->compute_penalty(X)>0.0) throw "out of range";
-          lnL[3] = likelihood->compute(X);
+          if (noisemodel.compute_penalty(X)>0.0) throw "out of range";
+          lnL[3] = likelihood.compute(X);
           C[Nparam*j + i] = (lnL[0]-lnL[1]-lnL[2]+lnL[3])/pow(ds,2.0);
         }
       }
     }
 
     //--- Invert matrix
-#ifdef DEBUG
-    likelihood->show_matrix("C",C,Nparam,Nparam);
-#endif
     clapack_dpotrf(CblasColMajor,CblasUpper,Nparam,C,Nparam);
     clapack_dpotri(CblasColMajor,CblasUpper,Nparam,C,Nparam);
-#ifdef DEBUG
-    likelihood->show_matrix("C",C,Nparam,Nparam);
-#endif
+
+    //--- Put optimum back in memory in Likelihood class
+    lnL_min = likelihood.compute(param);
 
     //--- free up memory
     if (X!=NULL) delete[] X;
@@ -300,13 +311,16 @@
 /*! Compute some confidence limits for the estimated noise parameters. I
  *  assume that the computed noise parameters correspond to the maximum
  *  likelihood value. 
+ * 
+ * \param[i] param : vector with estimated parameters (passed to show_L_and_ICs)
  */
-//--------------------------------------------------
-  void Minimizer::compute_confidence_intervals(void)
-//--------------------------------------------------
+//-----------------------------------------------------------
+  void Minimizer::compute_confidence_intervals(double *param)
+//-----------------------------------------------------------
   {
-    int      i;
-    double   *C=NULL;
+    int         i;
+    double      *C=NULL;
+    Likelihood  &likelihood=Likelihood::getInstance();
 
     using namespace std;
     //--- Compute covariance matrix
@@ -332,8 +346,24 @@
     //    with the optimal values for 'param' but anyway. Now I call 
     //    likelihood->compute(param) last so that the other classes copy 
     //    the optimal value of the estimated parameters into their instances.
-    show_BIC();
+    likelihood.compute_L_and_ICs(param);
+    show_L_and_ICs();
 
     //--- free memory
     if (C!=NULL) delete[] C;
+  }
+
+
+
+/*! Copy values of parameter param to param_
+ */
+//-----------------------------------------
+  void Minimizer::get_param(double *param_)
+//-----------------------------------------
+  {
+    int    i;
+
+    for (i=0;i<Nparam;i++) {
+      param_[i] = param[i];
+    }
   }

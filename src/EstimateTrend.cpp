@@ -19,14 +19,12 @@
 
   int main(int argc, char *argv[])
   {
-    Control    *control;
-
     using namespace std;
     //--- Open correct control file
     if (argc==1) {
-      control = Control::getInstance("estimatetrend.ctl");
+      Control &control = Control::getInstance("estimatetrend.ctl");
     } else if (argc==2) {
-      control = Control::getInstance(argv[1]);
+      Control &control = Control::getInstance(argv[1]);
     } else {
       cerr << "correct usage: estimatetrend [controlfile.ctl]" << endl;
       exit(EXIT_FAILURE);
@@ -45,6 +43,10 @@
     minimizer.solve();
     time(&end);
     cout << "Total computing time: " << difftime(end,start) << " sec" << endl;
+
+    //--- DesignMatrix is not a Meyer singleton so delete manually
+    DesignMatrix   *designmatrix=DesignMatrix::getInstance();
+    designmatrix->resetInstance();
 
     return EXIT_SUCCESS;
   }

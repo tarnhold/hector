@@ -11,7 +11,7 @@
 
   #ifndef __FULLCOV
     #define __FULLCOV
-    #include "Likelihood.h"
+    #include "MLEBase.h"
     #include "NoiseModel.h"
     #include "Observations.h"
     #include "DesignMatrix.h"
@@ -20,17 +20,17 @@
       #include "clapack.h"
     };
 
-    class FullCov : public Likelihood
+    class FullCov : public MLEBase
     {
       private:
         int     N;
-        double  *C,*dummyH,*dummyx,*gamma_x,*A,*y,*r,*dummy;
+        double  *C,*dummyt,*dummyH,*dummyx,*gamma_x,*A,*y,*r,*dummy;
 
       public:
         FullCov(void);
         ~FullCov(void);
-        virtual void    compute_LeastSquares(double *param,
-                                   double& lndeterminant, double& sigma_eta);
+        virtual void    prepare_covariance(double *param);
+        virtual void    compute_LeastSquares(double *param);
     };
   
   #endif

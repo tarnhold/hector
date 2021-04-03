@@ -24,20 +24,18 @@
     class Observations
     {
       private:
-        static bool           instanceFlag;
-        static Observations   *singleton;
-
         const double          NaN;
         int                   Ngaps;
         double                fs,scale_factor;
         bool                  PSMSL_monthly,interpolate_data;
         void                  (Observations::*read_observations)(std::string 
 								     filename);
-        std::vector<double>   t,x,xhat,offsets;
+        std::vector<double>   t,x,xhat,offsets,breaks;
         std::vector<LogEntry> postseismiclog;
         std::vector<ExpEntry> postseismicexp;
         std::string 	      extension;
  
+        Observations(void);
         void   read_header(std::fstream& fp, int component);
         void   read_external_header(std::fstream& fp);
         void   clean_offsets(void);
@@ -49,8 +47,12 @@
         void   determine_fs(void);
 
       public:
-        Observations(void);
-        static Observations* getInstance(void);
+        //--- Meyers singleton
+        static Observations& getInstance(void) {
+          static Observations theObservations;
+          return theObservations;
+        }
+
         void   save_mom(bool header=false);
         void   get_values(int& m, double **t_, double **x_);
         double get_fs(void) {return fs;};
@@ -58,13 +60,16 @@
         void   make_continuous(bool interpolate);
         void   remove_gaps(void);
         int    number_of_gaps(void) {return Ngaps;};
+        int    number_of_offsets(void) {return offsets.size();};
         int    number_of_observations(void) {return t.size();};
         void   set_xhat(const double *xhat_);
         void   set_one_x(int index, double value);
         void   get_offsets(std::vector<double>& offsets_);
+        void   get_breaks(std::vector<double>& breaks_);
         void   get_postseismiclog(std::vector<LogEntry>& postseismiclog_);
         void   get_postseismicexp(std::vector<ExpEntry>& postseismicexp_);
         void   add_offset(double MJD);
+        void   change_offset(int column, double MJD);
     };
 
   #endif

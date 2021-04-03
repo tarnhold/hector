@@ -13,24 +13,26 @@
     #include <complex>
     #include <cstdlib>
     #include "Control.h"
+    #include "Observations.h"
 
     class GenGaussMarkov : public NoiseModelBaseClass
     {
       private:
-        int     Nparam;
-        double  d_fixed,phi_fixed;
-        double  hyperg_2F1(double a, double b, double c, double z);
-        double  backward(double a, double b, double c, double z,
+        int          Nparam;
+        std::string  unit;
+        double       d_fixed,phi_fixed;
+        double       hyperg_2F1(double a, double b, double c, double z);
+        double       backward(double a, double b, double c, double z,
                                                         double F, double Fp1);
 
       public:
         GenGaussMarkov(double d_fixed_ = sqrt(-1.0));
         void    get_covariance(double *param, int m, double *gamma_x);
-        void    show(double *param, double *error);
+        void    show(double *param, double *error, double sigma);
         int     get_Nparam(void) {return Nparam;};
         double  get_d_fixed(void) {return d_fixed;};
         double  compute_penalty(double *param);
-        void    setup_PSD(void);
+        void    set_noise_parameters(double *params_fixed);
         double  compute_G(double lambda);
         void    compute_impulse_response(int m, double* h);
     };

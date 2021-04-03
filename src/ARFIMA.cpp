@@ -32,13 +32,14 @@
   ARFIMA::ARFIMA(double d_fixed_)
 //---!!--------------------------
   {
-    Control   *control = Control::getInstance();
+    Control   &control = Control::getInstance();
 
     using namespace std;
     //--- See how many AR and MA coefficients we require
     try {
-      p = control->get_int("AR_p");
-      q = control->get_int("MA_q");
+      control.get_string("PhysicalUnit",unit);
+      p = control.get_int("AR_p");
+      q = control.get_int("MA_q");
     }
     catch (exception &e) {
       cerr << e.what() << endl;
@@ -200,6 +201,9 @@
         alpha[i] += MA[j]*MA[j+i];
       }
     }
+#ifdef DEBUG
+    for (i=0;i<=q;i++) cout << "alpha i:" << i << " ,  " << alpha[i] << endl;
+#endif
 
     //--- Compute zeta
     zeta = new complex<double>[p];
@@ -485,14 +489,15 @@
  *
  * \param[in] param : list of AR,d,MA
  */
-//-----------------------------------------------
-  void ARFIMA::show(double *param, double *error)
-//-----------------------------------------------
+//-------------------------------------------------------------
+  void ARFIMA::show(double *param, double *error, double sigma)
+//-------------------------------------------------------------
   {
     int  i;
-    Control  *control=Control::getInstance();
 
     using namespace std;
+    cout << "sigma     = " << sigma << " " << unit << endl;
+
     for (i=0;i<Nparam;i++) {
       if (i<p) {
         printf("AR[%1d] = %8.4lf +/- %6.4lf\n",i+1,param[i],error[i]);
@@ -567,9 +572,9 @@
 
 /*! Store ARFIMA parameters
  */
-//----------------------------
-  void ARFIMA::setup_PSD(void)
-//----------------------------
+//-------------------------------------------------------
+  void ARFIMA::set_noise_parameters(double *params_fixed)
+//-------------------------------------------------------
   {
     int     i;
     double  *AR,*MA;
@@ -584,14 +589,17 @@
     for (i=0;i<p;i++) {
       cout << "Enter parameter value of AR[" << i+1 << "]: ";
       cin >> AR[i];
+      params_fixed[i] = AR[i];
     }
     for (i=0;i<q;i++) {
       cout << "Enter parameter value of MA[" << i+1 << "]: ";
       cin >> MA[i];
+      params_fixed[p+i] = MA[i];
     }
     if (estimate_spectral_index==true) {
       cout << "Enter fractional difference value of d: ";
       cin >> d_PSD;
+      params_fixed[p+q] = d_PSD;
     } else {
       d_PSD = d_fixed;
     }

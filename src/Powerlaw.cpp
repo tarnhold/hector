@@ -26,7 +26,18 @@
   Powerlaw::Powerlaw(double d_fixed_) : pi(4.0*atan(1.0))
 //---!!--------------------------------------------------
   {
-    if (isnan(d_fixed_)==false) {
+    Control  &control=Control::getInstance();
+   
+    using namespace std;
+    try {
+      control.get_string("PhysicalUnit",unit);
+    }
+    catch (exception &e) {
+      cerr << e.what() << endl;
+      exit(EXIT_FAILURE);
+    }
+
+    if (std::isnan(d_fixed_)==false) {
       estimate_spectral_index = false;
       d_fixed = d_fixed_;
     } else {
@@ -49,7 +60,6 @@
     int            j;
     const double   TINY=1.0e-6;
     double         d,d_max,alpha,tau;
-    Control        *control=Control::getInstance();
 
     using namespace std;
     //--- spectral index is stored in first element
@@ -79,24 +89,26 @@
 
 
 
-/*! Show noise parameters. Since I use Simon's trick of factoring out the
- *  innovation noise variance out of the covariance matrix, only the angle
- *  phi and spectral index alpha are known. I show cos(phi) and sin(phi)
- *  to facilitate computing sigma_pl and sigma_w.
+/*! Show noise parameters. 
  */
-//-------------------------------------------------
-  void Powerlaw::show(double *param, double *error)
-//-------------------------------------------------
+//---------------------------------------------------------------
+  void Powerlaw::show(double *param, double *error, double sigma)
+//---------------------------------------------------------------
   {
-    double   d,phi;
+    double        d,phi,T;
+    Observations  &observations=Observations::getInstance();
 
     using namespace std;
+    T = 1.0/(365.25*24.0*3600.0*observations.get_fs()); // T in yr
+
     if (estimate_spectral_index==true) {
       d = param[0];
     } else {
       d = d_fixed;
     }
 
+    cout << "sigma     = " << sigma/pow(T,0.5*d)
+             		  << " " << unit << "/yr^" << 0.5*d << endl;
     cout << fixed << setprecision(4);
     cout << "d         = " << d << " +/- " << error[0] << endl;
     cout << "kappa     = " << -2*d << " +/- " << 2*error[0] << endl;
@@ -126,7 +138,6 @@
 //-----------------------------------------------
   {
     double   penalty=0.0,LARGE=1.0e8;
-    Control  *control=Control::getInstance();
 
     using namespace std;
     if (estimate_spectral_index==true) {
@@ -151,9 +162,9 @@
 
 /*! Store angle and spectral index
  */
-//------------------------------
-  void Powerlaw::setup_PSD(void)
-//------------------------------
+//---------------------------------------------------------
+  void Powerlaw::set_noise_parameters(double *params_fixed)
+//---------------------------------------------------------
   {
     using namespace std;
     if (estimate_spectral_index==true) {
@@ -162,6 +173,8 @@
     } else {
       param_PSD[0] = d_fixed;
     }
+ 
+    params_fixed[0] = param_PSD[0];
   }
 
 

@@ -31,11 +31,6 @@
 // Subroutines
 //==============================================================================
 
-//++++++ Singleton stuff +++++++++++++++++++++
-bool Observations::instanceFlag = false;
-Observations* Observations::singleton = NULL;
-//++++++++++++++++++++++++++++++++++++++++++++
-
 
 /* The filename should have an extension which will allow me to determine
  * the file type
@@ -47,15 +42,21 @@ Observations* Observations::singleton = NULL;
     using namespace std;
     string    datafile,filename,directory;
     int       i,n,choice;
-    Control   *control = Control::getInstance();
+    Control   &control = Control::getInstance();
 
     //--- To ensure the right sampling frequency is read, fs=NaN at first
     fs=NaN;
 
+    //--- Avoid stupid errors
+    offsets.clear();
+    breaks.clear();
+    postseismiclog.clear();
+    postseismicexp.clear();
+
     //--- Get information on where to find the file with the observations
     try {
-      control->get_string("DataFile",datafile);
-      control->get_string("DataDirectory",directory);
+      control.get_string("DataFile",datafile);
+      control.get_string("DataDirectory",directory);
       if (directory.at(directory.length()-1)!='/') {
         directory += "/";
       }
@@ -66,7 +67,7 @@ Observations* Observations::singleton = NULL;
 
     //--- Is a scale factor different from 1 required?
     try {
-      scale_factor = control->get_double("ScaleFactor");
+      scale_factor = control.get_double("ScaleFactor");
     } catch (exception &e) {
       scale_factor = 1.0;
     }
@@ -106,7 +107,7 @@ Observations* Observations::singleton = NULL;
 
     //--- For the handling of the gaps I need to know some things
     try {
-      interpolate_data = control->get_bool("interpolate");
+      interpolate_data = control.get_bool("interpolate");
     } catch (exception &e) {
       cerr << e.what() << endl;
       exit(EXIT_FAILURE);
@@ -153,6 +154,7 @@ Observations* Observations::singleton = NULL;
     LogEntry       logdummy;
     ExpEntry       expdummy;
 
+    breaks.clear();
     offsets.clear();
     postseismiclog.clear();
     postseismicexp.clear();
@@ -168,6 +170,20 @@ Observations* Observations::singleton = NULL;
           if (component==component_) offsets.push_back(MJD);
         } else {
           cerr << "Could not understand offset-line:" << line << endl;
+          exit(EXIT_FAILURE);
+        }
+      } else if (strncmp("# break",line,7)==0) {
+        if (sscanf(&line[8],"%lf",&MJD)==1) {
+          if (breaks.size()==0 || 
+		(breaks.size()>0 && breaks[breaks.size()-1]<MJD)) {
+            breaks.push_back(MJD);
+          } else {
+            cerr << "Please list breaks in chronological order!" << endl;
+            cerr << line << endl;
+            exit(EXIT_FAILURE);
+          }
+        } else {
+          cerr << "Could not understand break-line:" << line << endl;
           exit(EXIT_FAILURE);
         }
       } else if (strncmp("# sampling period",line,17)==0) {
@@ -216,11 +232,11 @@ Observations* Observations::singleton = NULL;
     double         MJD,comp[3];
     string         component_name;
     Calendar       calendar;
-    Control        *control=Control::getInstance();
+    Control        &control=Control::getInstance();
 
     //--- We need to know which component is requested.
     try {
-      control->get_string("component",component_name);
+      control.get_string("component",component_name);
     } catch (exception &e) {
       cerr << e.what() << endl;
       exit(EXIT_FAILURE);
@@ -318,12 +334,25 @@ Observations* Observations::singleton = NULL;
   void Observations::write_header(std::fstream& fp)
 //-------------------------------------------------
   {
-    int    i;
+    int        i;
+    LogEntry   logdummy;
+    ExpEntry   expdummy;
 
     using namespace std;
     fp << "# sampling period " << 1.0/(fs*24.0*3600.0) << endl;
     for (i=0;i<offsets.size();i++) {
       fp << "# offset " << offsets[i] << endl;
+    }
+    for (i=0;i<breaks.size();i++) {
+      fp << "# break " << breaks[i] << endl;
+    }
+    for (i=0;i<postseismiclog.size();i++) {
+      logdummy = postseismiclog[i];
+      fp << "# log " << logdummy.MJD << "  " << logdummy.T << endl;
+    }
+    for (i=0;i<postseismicexp.size();i++) {
+      expdummy = postseismicexp[i];
+      fp << "# exp " << expdummy.MJD << "  " << expdummy.T << endl;
     }
   }
 
@@ -392,7 +421,7 @@ Observations* Observations::singleton = NULL;
     string     offset_filename;
     char       line[80];
     double     MJD,obs,mod;
-    Control    *control=Control::getInstance();
+    Control    &control=Control::getInstance();
 
     //--- Open file
     fp.open(filename.c_str(),ios::in);
@@ -404,7 +433,7 @@ Observations* Observations::singleton = NULL;
     //--- Read header information if it exists
     read_header(fp);
     try {
-      control->get_string("OffsetFile",offset_filename);
+      control.get_string("OffsetFile",offset_filename);
       fp_offset.open(offset_filename.c_str(),ios::in);
       if (!fp_offset.is_open()) {
         cerr << "Could not open " << offset_filename << endl;
@@ -507,11 +536,11 @@ Observations* Observations::singleton = NULL;
     char          line[80];
     int           component;
     double        MJD,obs[3],MJD_old;
-    Control       *control = Control::getInstance();
+    Control       &control = Control::getInstance();
 
     //--- Which component needs to be analysed?
     try {
-      control->get_string("component",component_name);
+      control.get_string("component",component_name);
     } catch (exception &e) {
       cerr << e.what() << endl;
       exit(EXIT_FAILURE);
@@ -534,7 +563,7 @@ Observations* Observations::singleton = NULL;
     //--- Read header information if it exists
     read_header(fp,component);
     try {
-      control->get_string("OffsetFile",offset_filename);
+      control.get_string("OffsetFile",offset_filename);
       fp_offset.open(offset_filename.c_str(),ios::in);
       if (!fp_offset.is_open()) {
         cerr << "Could not open " << offset_filename << endl;
@@ -590,11 +619,11 @@ Observations* Observations::singleton = NULL;
     string        component_name;
     int           decimal,remainder,component,i;
     double        MJD,obs[3],MJD_old,yearfraction,dt;
-    Control       *control = Control::getInstance();
+    Control       &control = Control::getInstance();
 
     //--- Which component needs to be analysed?
     try {
-      control->get_string("component",component_name);
+      control.get_string("component",component_name);
     } catch (exception &e) {
       cerr << e.what() << endl;
       exit(EXIT_FAILURE);
@@ -694,10 +723,10 @@ Observations* Observations::singleton = NULL;
     int      i;
     fstream  fp;
     string   filename;
-    Control  *control=Control::getInstance();
+    Control  &control=Control::getInstance();
 
     try {
-      control->get_string("OutputFile",filename);
+      control.get_string("OutputFile",filename);
     } catch (exception &e) {
       cerr << e.what() << endl;
       exit(EXIT_FAILURE);
@@ -772,7 +801,7 @@ Observations* Observations::singleton = NULL;
 //-----------------------------------------------------
   {
     x[index] = value;
-    if (isnan(value)) Ngaps++;
+    if (std::isnan(value)) Ngaps++;
   }
 
 
@@ -819,6 +848,10 @@ Observations* Observations::singleton = NULL;
         if (fabs(t[i]-t_new[j]-dt)>0.1*dt) {
           cerr << "Oops, the data is not equally spaced over the missing data!"
                << endl << "MJD=" << t[i] << endl;
+          cerr << "In other words, Hector guessed a data sampling (for example"
+               << " 7 days) and" << endl << " uses that to find the times in "
+               << " the gap." << endl;
+          cerr << "Bottom line: add \"# sampling period\" in header!" << endl;
           exit(EXIT_FAILURE);
         }
       }
@@ -898,6 +931,22 @@ Observations* Observations::singleton = NULL;
 
 
 
+/*! Copy breaks to breaks_
+ */
+//-----------------------------------------------------------
+  void Observations::get_breaks(std::vector<double>& breaks_)
+//-----------------------------------------------------------
+  {
+    int   i;
+
+    breaks_.clear();
+    for (i=0;i<breaks.size();i++) {
+      breaks_.push_back(breaks[i]);
+    }
+  }
+
+
+
 /*! Copy postseismiclog to postseismiclog_
  */
 //-----------------------------------------------------------------------------
@@ -941,13 +990,16 @@ Observations* Observations::singleton = NULL;
 
 
 
-//--!!-----------------------------------------
-  Observations* Observations::getInstance(void)
-//--!!-----------------------------------------
+/*! Add offset
+ */
+//--------------------------------------------------------
+  void Observations::change_offset(int column, double MJD)
+//--------------------------------------------------------
   {
-    if (instanceFlag==false) {
-      singleton = new Observations();
-      instanceFlag=true;
+    using namespace std;
+    if (column<0 || column>=offsets.size()) {
+      cerr << "Invalid column specification: " << column << endl;
+      exit(EXIT_FAILURE);
     }
-    return singleton;
-  }      
+    offsets[column] = MJD;
+  }

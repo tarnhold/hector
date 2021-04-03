@@ -35,7 +35,7 @@
          << ", Ngaps=" << Ngaps << ", N=" << N << endl;
 #endif
 
-    //--- From the base class Likelihood, the values of m, n & Ngaps are known.
+    //--- From the base class MLEBase, the values of m, n & Ngaps are known.
     try {
       gamma_x = new double[m];
       r       = new double[N];
@@ -43,6 +43,7 @@
       A       = new double[N*n];
       dummyH  = new double[N*n];
       dummyx  = new double[N];
+      dummyt  = new double[N];
       dummy   = new double[N];
       C       = new double[N*N];
 
@@ -56,11 +57,13 @@
 
     //--- Already eliminate rows of missing data from x and H and store the
     //    results in dummy_x and dummy_H. These latter two will be used in
-    //    future matrix operations. H & x are no longer needed.
+    //    future matrix operations. H & x are variables defined in the
+    //    MLEBase class.
     j=0;
     for (i=0;i<m;i++) {
       if (!isnan(x[i])) {
         dummyx[j] = x[i];
+        dummyt[j] = t[i];
         cblas_dcopy(n,&H[i],m,&dummyH[j],N);
         j++;
       }
@@ -85,41 +88,27 @@
     if (A!=NULL)         delete[]  A;
     if (dummyH!=NULL)    delete[]  dummyH;
     if (dummyx!=NULL)    delete[]  dummyx;
+    if (dummyt!=NULL)    delete[]  dummyt;
     if (dummy!=NULL)     delete[]  dummy;
     if (C!=NULL)         delete[]  C;
   }
 
 
 
-/*! Compute the Least-Squares bit to estimate theta and sigma_eta. At
- *  the same time determine the logarithm of the determinant of C. Note
- *  that sigma_eta is estimated from the whitened residuals, not using MLE.
+/*! Compute Cholesky decomposition of C 
  *
- * \param[in]  param          : array with noise parameters
- * \param[out] lndeterminant  : logarithm of the likelihood
- * \param[out] sigma_eta      : STD of whitened residuals
+ * \param[in]  param       : array with noise parameters
  */
-//-------------------------------------------------------------------------
-  void FullCov::compute_LeastSquares(double *param, double& 
-					  lndeterminant, double& sigma_eta)
-//-------------------------------------------------------------------------
+//-----------------------------------------------
+  void FullCov::prepare_covariance(double *param)
+//-----------------------------------------------
   {
-    int         i,j,i0,j0,i1,j1,*ipiv;
-    double      product,lambda,lambda_min,lambda_max;
-    NoiseModel  *noisemodel=NoiseModel::getInstance();
+    NoiseModel  &noisemodel=NoiseModel::getInstance();
+    int         i,i0,i1,j0,j1;
 
     using namespace std;
-    //--- I assume the noise parameters, and thus the covariance matrix, have 
-    //    been changed. As a result, matrix A and y need again to be computed.
-    cblas_dcopy(N*n,dummyH,1,A,1);
-    cblas_dcopy(N,dummyx,1,y,1);
-
-    //--- Create pivots
-    ipiv = new int[N];
-    for (i=0;i<N;i++) ipiv[i]=i;
-
     //--- Create the Covariance matrix. 
-    noisemodel->get_covariance(param,m,gamma_x);
+    noisemodel.get_covariance(param,m,gamma_x);
 #ifdef DEBUG
     show_matrix("gamma_x",gamma_x,m,1);
 #endif
@@ -152,6 +141,39 @@
     //--- Perform Cholesky decomposition, compute determinant and compute
     //    matrix A and vector y.
     clapack_dpotrf(CblasColMajor,CblasUpper,N,C,N);
+
+    //--- Compute logaritm of determinant which is a MLEBase-class variable
+    ln_det_C = 0.0;
+    for (i=0;i<N;i++) {
+      ln_det_C += 2.0*log(C[i+N*i]);
+    }
+  }
+
+
+
+/*! Compute the Least-Squares bit to estimate theta and sigma_eta. At
+ *  the same time determine the logarithm of the determinant of C. Note
+ *  that sigma_eta is estimated from the whitened residuals, not using MLE.
+ *
+ * \param[in]  param       : array with noise parameters
+ */
+//-------------------------------------------------
+  void FullCov::compute_LeastSquares(double *param)
+//-------------------------------------------------
+  {
+    int         i,j,*ipiv;
+    double      product,lambda,lambda_min,lambda_max;
+
+    using namespace std;
+    //--- Always compute A and y from dummyH and dummyx
+    cblas_dcopy(N*n,dummyH,1,A,1);
+    cblas_dcopy(N,dummyx,1,y,1);
+
+    //--- Create pivots
+    ipiv = new int[N];
+    for (i=0;i<N;i++) ipiv[i]=i;
+
+    //--- Cholesky decomposition is stored in matrix C
     clapack_dgetrs(CblasColMajor,CblasTrans,N,n,C,N,ipiv,A,N);
     clapack_dgetrs(CblasColMajor,CblasTrans,N,1,C,N,ipiv,y,N);
 #ifdef DEBUG
@@ -159,18 +181,13 @@
     show_matrix("y",y,N,1);
 #endif
 
-    //--- Compute logaritm of determinant
-    lndeterminant = 0.0;
-    for (i=0;i<N;i++) {
-      lndeterminant += 2.0*log(C[i+N*i]);
-    }
-
     //-- Save y in vector r
     cblas_dcopy(N,y,1,r,1);
 
     //--- Simulate dgels using ATLAS subroutines (ordinary least-squares)
     cblas_dsyrk(CblasColMajor,CblasUpper,CblasTrans,n,N,1.0,A,N,0.0,C_theta,n);
     clapack_dpotrf(CblasColMajor,CblasUpper,n,C_theta,n);
+
     clapack_dpotri(CblasColMajor,CblasUpper,n,C_theta,n);
     cblas_dgemv(CblasColMajor,CblasTrans,N,n,1.0,A,N,y,1,0.0,dummy,1);
     cblas_dsymv(CblasColMajor,CblasUpper,n,1.0,C_theta,n,dummy,1,0.0,theta,1);
@@ -184,13 +201,13 @@
                                         N,1,n,1.0,A,N,theta,n,-1.0,r,N);
 
     product = cblas_ddot(N,r,1,r,1);
-    //--- compute sigma_eta
+    //--- compute sigma_eta which is a MLEBase-class variable
     sigma_eta = sqrt(product/static_cast<double>(N)); 
 
 #ifdef DEBUG
-    cout << "sigma_eta     = " << sigma_eta << endl;
-    cout << "product       = " << product << endl;
-    cout << "lndeterminant = " << lndeterminant << endl;
+    cout << "sigma_eta = " << sigma_eta << endl;
+    cout << "product   = " << product << endl;
+    cout << "ln_det_C  = " << ln_det_C << endl;
 #endif
 
     //--- free memory

@@ -22,6 +22,17 @@
   White::White(void)
 //---!!-------------
   {
+    Control   &control=Control::getInstance();
+
+    using namespace std;
+    try {
+      control.get_string("PhysicalUnit",unit);
+    }
+    catch (exception &e) {
+      cerr << e.what() << endl;
+      exit(EXIT_FAILURE);
+    }
+
     Nparam = 0;
   }
 
@@ -43,11 +54,12 @@
 
 /*! Nothing to show
  */
-//----------------------------------------------
-  void White::show(double *param, double *error)
-//----------------------------------------------
+//------------------------------------------------------------
+  void White::show(double *param, double *error, double sigma)
+//------------------------------------------------------------
   {
     using namespace std;
+    cout << "sigma     = " << sigma << " " << unit << endl;
     cout << "No noise parameters to show" << endl;
   }
 
@@ -64,11 +76,11 @@
 
 
 
-/*! Nothing needs to be stored for white noise
+/*! Nothing can be set or needs to be stored for white noise
  */
-//---------------------------
-  void White::setup_PSD(void)
-//---------------------------
+//------------------------------------------------------
+  void White::set_noise_parameters(double *params_fixed)
+//------------------------------------------------------
   {
     // Nothing needs to be stored
   }

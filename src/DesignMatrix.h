@@ -11,6 +11,7 @@
     #define __DESIGNMATRIX
     #include "Control.h"
     #include "Observations.h"
+    #include <gsl/gsl_sf.h>
 
     extern "C" {
       #include "cblas.h"
@@ -20,26 +21,44 @@
     class DesignMatrix
     {
       private:
-        static bool            instanceFlag;
         static DesignMatrix    *singleton;
-        const double           tpi;
+        const double           tpi,pi;
         std::string            unit;
-        int                    n,m,Ngaps,n_periodic_signals,n_offsets;
+        bool                   estimate_multitrend,varying_seasonal;
+        int                    n,m,Ngaps,n_periodic_signals,n_offsets,n_breaks;
         int                    n_postseismiclog,n_postseismicexp;
-        double                 dt,*H,*F,*periods,th;
-        std::vector<double>    offsets;
+        int                    degree_polynomial,n_channels,index_offset;
+        int                    varyingseasonal_N,index_seasonal;
+        double                 dt,*H,*F,*periods,th,t0,*t;
+        std::vector<double>    offsets,breaks;
         std::vector<LogEntry>  postseismiclog;
         std::vector<ExpEntry>  postseismicexp;
-        bool                   quadratic_term;
         bool                   seasonal_signal,halfseasonal_signal;
-
-      public:
+        bool                   estimate_multivariate;
         DesignMatrix(void);
         ~DesignMatrix(void);
-        static DesignMatrix* getInstance(void);
-        static void          destroyInstance(void);
+ 
+        void compute_Amp(double Ac, double As,
+                          double sigma_in, double& Amp, double& sigma_out);
+
+      public:
+        //--- Normal pointer singleton
+        static DesignMatrix* getInstance(void) {
+          if (singleton==NULL) {
+            singleton = new DesignMatrix();
+          }
+          return singleton;
+        }
+         
+        //--- Destroy singleton
+        static void resetInstance() {
+          delete singleton;
+          singleton = NULL; // so GetInstance will still work.
+        }
+
         void    get_H(int& n_, double **H_); 
         void    get_F(double **F_); 
+        int     get_offset_index(void) {return index_offset;};
         void    show_results(double *theta, double *error);
         void    compute_xhat(const double *theta);
     };

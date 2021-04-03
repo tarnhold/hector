@@ -22,8 +22,8 @@
 //---!!-----------------------------
   {
     using namespace std;
-    Control          *control=Control::getInstance();
-    NoiseModel       *noisemodel=NoiseModel::getInstance();
+    Control          &control=Control::getInstance();
+    NoiseModel       &noisemodel=NoiseModel::getInstance();
     int              i,j,k,n_simulations,m,ms;
     string           directory,label,filename;
     double           *y,*MJD,dt,ts;
@@ -32,15 +32,15 @@
   
     //--- Which noise models must be used
     try {
-      control->get_string("SimulationDir",directory);
+      control.get_string("SimulationDir",directory);
       if (directory.at(directory.length()-1)!='/') {
         directory += "/";
       }
-      control->get_string("SimulationLabel",label);
-      n_simulations = control->get_int("NumberOfSimulations");
-      m             = control->get_int("NumberOfPoints");
-      dt            = control->get_double("SamplingPeriod");
-      ms            = control->get_int("TimeNoiseStart"); 
+      control.get_string("SimulationLabel",label);
+      n_simulations = control.get_int("NumberOfSimulations");
+      m             = control.get_int("NumberOfPoints");
+      dt            = control.get_double("SamplingPeriod");
+      ms            = control.get_int("TimeNoiseStart"); 
     }
     catch (exception &e) {
       cerr << e.what() << endl;
@@ -48,7 +48,7 @@
     }
 
     //--- Prepare NoiseModel impulse responses
-    noisemodel->setup_MonteCarlo(ms+m);
+    noisemodel.setup_MonteCarlo(ms+m);
 
     //--- Store results in array y
     MJD = new double[m];
@@ -74,7 +74,7 @@
       }
 
       //--- Create the synthetic noise
-      noisemodel->create_noise(ms+m,y);
+      noisemodel.create_noise(ms+m,y);
       cout << "noise created" << endl;
 
       //--- write results to file
@@ -109,14 +109,12 @@
 
   int main(int argc, char* argv[])
   {
-    Control         *control;
-
     using namespace std;
     //--- Open correct control file
     if (argc==1) {
-      control = Control::getInstance("simulatenoise.ctl");
+      Control &control = Control::getInstance("simulatenoise.ctl");
     } else if (argc==2) {
-      control = Control::getInstance(argv[1]);
+      Control &control = Control::getInstance(argv[1]);
     } else {
       cerr << "correct usage: simulatenoise [controlfile.ctl]" << endl;
       exit(EXIT_FAILURE);

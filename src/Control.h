@@ -33,10 +33,11 @@
       void           open_file(void);
       void           close_file(void);
 
-    public:
       Control(std::string file);
       ~Control(void);
-      static Control* getInstance(std::string filename = "estimatetrend.ctl");
+
+    public:
+      static Control& getInstance(std::string filename = "estimatetrend.ctl");
       void     get_name_list(const std::string label, std::string *value, 
 									int& n);
       void     get_string(const std::string label, std::string& value);

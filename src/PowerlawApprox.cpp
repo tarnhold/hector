@@ -32,7 +32,7 @@
   PowerlawApprox::PowerlawApprox(double d_fixed_) : pi(4.0*atan(1.0))
 //---!!--------------------------------------------------------------
   {
-    Control       *control=Control::getInstance();
+    Control       &control=Control::getInstance();
 
     using namespace std;
     //--- Check if we need to estimate the spectral index or not
@@ -45,7 +45,7 @@
 
     //--- How many days before t0 did the noise start to develop?
     try {
-      ms = control->get_int("TimeNoiseStart"); // number of days before t0
+      ms = control.get_int("TimeNoiseStart"); // number of days before t0
     }
     catch (exception &e) {
       cerr << e.what() << endl;
@@ -69,7 +69,6 @@
     const double        TINY=1.0e-6;
     double              Scale,I,d,d_max;
     double              *C=NULL,*h1=NULL,*h2=NULL;
-    Control             *control=Control::getInstance();
     fftw_plan           plan_forward,plan_backward;
     fftw_complex        *F_h1=NULL,*F_h2=NULL,*F_C=NULL;
 
@@ -173,19 +172,24 @@
 
 /*! Show noise parameters. 
  */
-//-------------------------------------------------------
-  void PowerlawApprox::show(double *param, double *error)
-//-------------------------------------------------------
+//---------------------------------------------------------------------
+  void PowerlawApprox::show(double *param, double *error, double sigma)
+//---------------------------------------------------------------------
   {
-    double   d;
+    double        d,T;
+    Observations  &observations=Observations::getInstance();
 
     using namespace std;
+    T = 1.0/(365.25*24.0*3600.0*observations.get_fs()); // T in yr
+
     if (estimate_spectral_index==true) {
       d = param[0];
     } else {
       d = d_fixed;
     }
- 
+
+    cout << "sigma     = " << sigma/pow(T,0.5*d)
+                          << " " << unit << "/yr^" << 0.5*d << endl;
     cout << fixed << setprecision(4); 
     cout << "d         = " << d << " +/- " << error[0] << endl;
     cout << "kappa     = " << -2*d << " +/- " << 2*error[0] << endl;
@@ -234,9 +238,9 @@
 
 /*! Not implemented
  */
-//------------------------------------
-  void PowerlawApprox::setup_PSD(void)
-//------------------------------------
+//---------------------------------------------------------------
+  void PowerlawApprox::set_noise_parameters(double *params_fixed)
+//---------------------------------------------------------------
   {
     using namespace std;
     cerr << "Please use pure Powerlaw class!" << endl;

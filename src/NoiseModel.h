@@ -10,7 +10,6 @@
   #ifndef __NOISEMODEL
     #define __NOISEMODEL
     #include "Control.h"
-    #include "Likelihood.h"
     #include "NoiseModelBaseClass.h"
     #include <fftw3.h>
     #include <gsl/gsl_rng.h>
@@ -24,6 +23,7 @@
     class NoiseModel 
     {
       private:
+        const double         NaN;
         static bool          instanceFlag;
         static NoiseModel    *singleton;
         int                  Nparam,Nmodels,*NparamIndv;
@@ -35,18 +35,22 @@
         const gsl_rng_type   *T_random;
         gsl_rng              *r_random;
 
+        NoiseModel(void);
+        ~NoiseModel(void);
         double  compute_fraction(int i, double *param);
 
       public:
-        static NoiseModel*   getInstance(void);
+        //--- Meyers singleton
+        static NoiseModel& getInstance(void) {
+          static NoiseModel theNoiseModel;
+          return theNoiseModel;
+        }
 
-        NoiseModel(void);
-        ~NoiseModel(void);
         void    get_covariance(double *param,int m,double *gamma_x);
-        void    show(double *param, double *error);
+        void    show(double *param, double *error, double sigma);
         int     get_Nparam(void) {return Nparam;};
         double  compute_penalty(double *param);
-        void    setup_PSD(void);
+        void    set_noise_parameters(double *params_fixed);
         double  compute_G(double lambda);
         void    setup_MonteCarlo(int m);
         void    create_noise(int m, double *w);

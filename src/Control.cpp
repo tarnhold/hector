@@ -91,10 +91,20 @@
     using namespace std;
     string        str,line;
     stringstream  fs_line;
+    string        whitespaces (" \t\f\v\n\r");
+    size_t        found;
 
     find_label(label); // point file pointer to the right location
     getline(fs,line);  // read the whole line into string 'line'
+    
+    //--- Remove trailing spaces since >> chokes on them
+    found = line.find_last_not_of(whitespaces);
+    if (found!=std::string::npos) {
+      line.erase(found+1);
+    }
     fs_line << line;   // copy line into the string-stream
+
+    //--- Parse line
     n=0;
     while (fs_line.good()==true && fs_line.eof()!=true) {
       fs_line >> str;
@@ -228,12 +238,13 @@
 
 /* In my opinion this subroutine is the core trick of the singleton
  * implementation. A pointer is made static and points to the instance.
+ * This is Meyers singleton.
  */
 //---------------------------------------------------
-  Control* Control::getInstance(std::string filename)
+  Control& Control::getInstance(std::string filename)
 //---------------------------------------------------
   {
     static Control singleton(filename);
 
-    return &singleton;
+    return singleton;
   }

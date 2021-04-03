@@ -16,9 +16,14 @@
   #include "PowerlawApprox.h"
   #include "ARFIMA.h"
   #include "GenGaussMarkov.h"
+  #include <sys/types.h>
   #include <iostream>
+  #include <iostream>
+  #include <iomanip>
   #include <ostream>
   #include <cstdlib>
+  #include <cstdio>
+  #include <unistd.h>
   #include <cstring>
 
   //  #define DEBUG
@@ -26,25 +31,20 @@
 //=============================================================================
 // Subroutines
 //=============================================================================
-//
-
-//++++++ Singleton stuff ++++++++++++++++++
-bool NoiseModel::instanceFlag = false;
-NoiseModel* NoiseModel::singleton = NULL;
-//+++++++++++++++++++++++++++++++++++++++++
 
 
-//--!!------------------------
-  NoiseModel::NoiseModel(void)
-//--!!------------------------
+//--!!------------------------------------------
+  NoiseModel::NoiseModel(void) : NaN(sqrt(-1.0))
+//--!!------------------------------------------
   {
     using namespace std;
     int      i;
-    Control  *control = Control::getInstance();
+    long     seed;
+    Control  &control = Control::getInstance();
 
     try {
-      control->get_string("PhysicalUnit",unit);
-      control->get_name_list("NoiseModels",noisemodel,Nmodels);
+      control.get_string("PhysicalUnit",unit);
+      control.get_name_list("NoiseModels",noisemodel,Nmodels);
 //---------
       for (i=0;i<Nmodels;i++) cout << i << ") " << noisemodel[i] << endl;
 //---------
@@ -77,6 +77,8 @@ NoiseModel* NoiseModel::singleton = NULL;
     //--- Initiate random generator
     T_random = gsl_rng_default;
     r_random = gsl_rng_alloc (T_random);
+    seed     = time (NULL) * getpid();
+    gsl_rng_set (r_random, seed);
 
     printf ("generator type: %s\n", gsl_rng_name (r_random));
     printf ("seed = %lu\n", gsl_rng_default_seed);
@@ -90,8 +92,6 @@ NoiseModel* NoiseModel::singleton = NULL;
         modelIndv[i] = new Powerlaw();
       } else if (noisemodel[i].compare("Flicker")==0) {
         modelIndv[i] = new Powerlaw(0.5);
-      } else if (noisemodel[i].compare("Power04")==0) {
-        modelIndv[i] = new Powerlaw(0.4);
       } else if (noisemodel[i].compare("RandomWalk")==0) {
         modelIndv[i] = new Powerlaw(1.0);
       } else if (noisemodel[i].compare("FlickerGGM")==0) {
@@ -100,14 +100,12 @@ NoiseModel* NoiseModel::singleton = NULL;
         modelIndv[i] = new GenGaussMarkov(1.0);
       } else if (noisemodel[i].compare("PowerlawApprox")==0) {
         modelIndv[i] = new PowerlawApprox;
-      } else if (noisemodel[i].compare("FlickerApprox")==0) {
-        modelIndv[i] = new PowerlawApprox(0.5);
       } else if (noisemodel[i].compare("ARFIMA")==0) {
         modelIndv[i] = new ARFIMA();
       } else if (noisemodel[i].compare("ARMA")==0) {
         modelIndv[i] = new ARFIMA(0.0);
       } else if (noisemodel[i].compare("GGM")==0) {
-        modelIndv[i] = new GenGaussMarkov;
+        modelIndv[i] = new GenGaussMarkov(NaN);
       } else {
         cerr << "Unknown noise model: " << noisemodel[i] << endl;
         exit(EXIT_FAILURE);
@@ -202,7 +200,7 @@ NoiseModel* NoiseModel::singleton = NULL;
       //--- Compute fraction
       fraction = compute_fraction(i,param);
 #ifdef DEBUG
-      cout << "i=" << i << ", fraction=" << fraction << endl;
+      cout << "i=" << i << ", fraction=" << scientific << fraction << endl;
 #endif
 
       //--- Scale covariance vector with fraction and add it to the total 
@@ -226,51 +224,30 @@ NoiseModel* NoiseModel::singleton = NULL;
  * first Nmodels-1 parameters are my phi's, the others are actual NoiseModel
  * parameters.
  */
-//---------------------------------------------------
-  void NoiseModel::show(double *param, double *error)
-//---------------------------------------------------
+//---------------------------------------------------------------------
+  void NoiseModel::show(double *param, double *error, double sigma_eta)
+//---------------------------------------------------------------------
   {
     int           i,j,k;
-    double        fraction,sigma_eta,d,T;
-    Likelihood    *likelihood=Likelihood::getInstance();
-    Observations  *observations=Observations::getInstance();
+    double        fraction,d,T;
+    Observations  &observations=Observations::getInstance();
 
     using namespace std;
     cout << endl;
 
     //--- Get some information on sigma_eta and sampling period
-    sigma_eta = likelihood->get_sigma_eta();
-    T = 1.0/(365.25*24.0*3600.0*observations->get_fs()); // T in yr
+    T = 1.0/(365.25*24.0*3600.0*observations.get_fs()); // T in yr
     k = Nmodels-1;
     for (i=0;i<Nmodels;i++) {
       
       //--- Compute fraction and show it
       fraction = compute_fraction(i,param);
       cout << noisemodel[i] << ":" << endl 
-           << "fraction  = " << fraction << endl;
-      if (noisemodel[i].compare("Powerlaw")==0 ||
-          noisemodel[i].compare("PowerlawApprox")==0 ||
-          noisemodel[i].compare("GGM")==0) {
-        d = param[k];
-        cout << "sigma     = " << sigma_eta*sqrt(fraction)/pow(T,0.5*d)
-             << " " << unit << "/yr^" << 0.5*d << endl;
-      } else if (noisemodel[i].compare("FlickerGGM")==0 ||
-                 noisemodel[i].compare("FlickerApprox")==0 ||
-                 noisemodel[i].compare("Power04")==0 ||
-                 noisemodel[i].compare("RandomWalk")==0 ||
-                 noisemodel[i].compare("RandomWalkGGM")==0) {
-        d = modelIndv[i]->get_d_fixed();
-        cout << "sigma     = " << sigma_eta*sqrt(fraction)/pow(T,0.5*d)
-             << " " << unit << "/yr^" << 0.5*d << endl;
-      } else {
-        cout << "sigma     = " << sigma_eta*sqrt(fraction)
-             << " " << unit << endl;
-      }
+           << "fraction  = " << fixed << setprecision(5) << fraction << endl;
 
       //--- Show value noise parameters
-      modelIndv[i]->show(&param[k],&error[k]);
+      modelIndv[i]->show(&param[k],&error[k],sigma_eta*sqrt(fraction));
       cout << endl;
-
 
       //--- move pointer in param-array
       k += NparamIndv[i];
@@ -314,12 +291,17 @@ NoiseModel* NoiseModel::singleton = NULL;
 /* To make a power spectral density plot, the values of param are needed.
  * In the future I could do something fancy by storing these values somewhere
  * on file and reading them automatically. Until then: manual input.
+ *
+ * In the minimisation problem I work with parameters phi_1,...,phi_(N-1)
+ * to decide the fraction of each noise model. However, to make a power
+ * spectrum plot, I only need the total fraction which I just ask the use to
+ * provide.
  */
-//--------------------------------
-  void NoiseModel::setup_PSD(void)
-//--------------------------------
+//-----------------------------------------------------------
+  void NoiseModel::set_noise_parameters(double *params_fixed)
+//-----------------------------------------------------------
   {
-    int    i;
+    int    i,j;
 
     using namespace std;
     //--- Ask user about the fractions
@@ -327,10 +309,13 @@ NoiseModel* NoiseModel::singleton = NULL;
       cout << "Enter fraction for model " << noisemodel[i] << ": ";
       cin >> fraction_fixed[i];
     }
+    
     //--- Setup each noise model
+    j = Nmodels-1; //--- skip parameters with fraction values
     for (i=0;i<Nmodels;i++) {
       cout << endl << noisemodel[i] << ":" << endl;
-      modelIndv[i]->setup_PSD();
+      modelIndv[i]->set_noise_parameters(&params_fixed[j]);
+      j += NparamIndv[i];
     }
   }
 
@@ -344,7 +329,7 @@ NoiseModel* NoiseModel::singleton = NULL;
   double NoiseModel::compute_G(double lambda)
 //-------------------------------------------
   {
-    int      i,j;
+    int      i;
     double   G=0.0;
 
     using namespace std;
@@ -448,20 +433,4 @@ NoiseModel* NoiseModel::singleton = NULL;
 
     //--- Finally, apply white noise sigma
     cblas_dscal(m,sigma_fixed*Scale,y,1);
-  }
-
-
-  
-/* The noise model is used so many times by other classes that it makes
- * sense to turn this into a singleton
- */
-//-----------------------------------------
-  NoiseModel* NoiseModel::getInstance(void)
-//-----------------------------------------
-  {
-    if (instanceFlag==false) {
-      instanceFlag=true;
-      singleton = new NoiseModel();
-    }
-    return singleton;
   }

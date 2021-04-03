@@ -33,12 +33,8 @@
     double            T,*theta;
     complex<double>   a,b,c,w;
 
-    cout << "---------------" << endl;
-    cout << "ModelSpectrum" << endl;
-    cout << "---------------" << endl << endl;
-
     //--- Need to know the standard deviation of epsilon (the white noise)
-    cout << "Enter the standard deviation of the innovation noise: ";
+    cout << "Enter the standard deviation of the driving noise: ";
     cin >> sigma;
 
     //--- For correct plots, I need to know the sampling period
@@ -56,26 +52,30 @@
   void ModelSpectrum::compute(void)
 //---------------------------------
   {
+    using namespace std;
     const int   N=500;
-    int         i,choice;
-    double      dlambda,lambda,*G,*f,s,freq[2];
-    FILE        *fp;
-    NoiseModel  *noisemodel=NoiseModel::getInstance();
+    int         i,choice,Nparam;
+    double      dlambda,lambda,*G,*f,s,freq[2],*params_fixed=NULL;
+    NoiseModel  &noisemodel=NoiseModel::getInstance();
+    fstream     fp;
+    string      filename;
+    Control     &control=Control::getInstance();
 
     //--- Setup Noisemodel parameters
-    noisemodel->setup_PSD();
+    Nparam = noisemodel.get_Nparam();
+    if (Nparam>0) params_fixed = new double[Nparam];
+    noisemodel.set_noise_parameters(params_fixed);
 
     //--- create space to hold PSD
     G = new double[N+1];
     f = new double[N+1];
 
-    using namespace std;
     cout << "1) Linear or 2) logarithmic scaling of frequency?: ";
     cin >> choice;
     if (choice==1) {
       for (i=0;i<=N;i++) {
         f[i] = 0.5*static_cast<double>(i)/static_cast<double>(N)*fs;
-        G[i] = scale*noisemodel->compute_G(tpi*f[i]/fs);
+        G[i] = scale*noisemodel.compute_G(tpi*f[i]/fs);
       }
     } else if (choice==2) {
       cout << "Enter freq0 and freq1: ";
@@ -87,7 +87,7 @@
       for (i=0;i<=N;i++) {
         s    = static_cast<double>(i)/static_cast<double>(N);
         f[i] = exp((1.0-s)*freq[0] + s*freq[1]);
-        G[i] = scale*noisemodel->compute_G(tpi*f[i]/fs);
+        G[i] = scale*noisemodel.compute_G(tpi*f[i]/fs);
       }
     } else {
       cerr << "Unknown choice" << endl;
@@ -95,15 +95,26 @@
     }
 
     //--- write results to file
-    fp = fopen("modelspectrum.out","w");
-    for (i=0;i<=N;i++) {
-      fprintf(fp,"%le %le\n",f[i],G[i]);
+    try {
+      control.get_string("OutputFile",filename);
+    } catch (exception &e) {
+      filename = "modelspectrum.out";
     }
-    fclose(fp);
+    cout << "--> " << filename << endl;
+    fp.open(filename.c_str(),ios::out);
+    if (!fp.is_open()) {
+      cerr << "Could not open " << filename << endl;
+      exit(EXIT_FAILURE);
+    }
+    for (i=0;i<=N;i++) {
+      fp << scientific << f[i] << "   " << G[i] << endl;
+    }
+    fp.close();
 
     //--- Clean up mess
     delete[] G;
     delete[] f;
+    if (params_fixed!=NULL) delete[] params_fixed;
   }
     
 
@@ -113,14 +124,12 @@
 
   int main(int argc, char* argv[]) 
   {
-    Control   *control=NULL;
-
     using namespace std;
     //--- Open correct control file
     if (argc==1) {
-      control = Control::getInstance("estimatetrend.ctl");
+      Control &control = Control::getInstance("modelspectrum.ctl");
     } else if (argc==2) {
-      control = Control::getInstance(argv[1]);
+      Control &control = Control::getInstance(argv[1]);
     } else {
       cerr << "correct usage: modelspectrum [controlfile.ctl]" << endl;
       exit(EXIT_FAILURE);
@@ -129,7 +138,7 @@
     cout << endl
          << "************************************" << endl
          << "    modelspectrum, version " << VERSION << endl
-         << "************************************" << endl;
+         << "************************************" << endl << endl;
 
     //--- start modelspectrum
     ModelSpectrum PSD;

@@ -23,16 +23,24 @@
   GenGaussMarkov::GenGaussMarkov(double d_fixed_)
 //---!!------------------------------------------
   {
-    Control  *control=Control::getInstance();
+    Control  &control=Control::getInstance();
 
     using namespace std;
-    if (isnan(d_fixed_)==false) {
-      d_fixed = d_fixed_;
+    d_fixed = d_fixed_;
+    try {
+      control.get_string("PhysicalUnit",unit);
+    }
+    catch (exception &e) {
+      cerr << e.what() << endl;
+      exit(EXIT_FAILURE);
+    }
+
+    if (isnan(d_fixed)==false) {
       //--- If we set d fixed, then phi is automatically fixed too. The idea
       //    is to have a small value so that the power-law does not flatten 
       //    out too soon.
       try {
-        phi_fixed = control->get_double("GGM_1mphi");
+        phi_fixed = control.get_double("GGM_1mphi");
       }
       catch (exception &e) {
         cerr << e.what() << endl;
@@ -43,7 +51,7 @@
       Nparam = 0;
     } else {
       try {
-        phi_fixed = control->get_double("GGM_1mphi");
+        phi_fixed = control.get_double("GGM_1mphi");
         Nparam = 1;
       }
       catch (exception &e) {
@@ -210,20 +218,34 @@
 
 /*! Show phi and fractional difference values
  */
-//-------------------------------------------------------
-  void GenGaussMarkov::show(double *param, double *error)
-//-------------------------------------------------------
+//---------------------------------------------------------------------
+  void GenGaussMarkov::show(double *param, double *error, double sigma)
+//---------------------------------------------------------------------
   {
+    double        d,T;
+    Observations  &observations=Observations::getInstance();
+
     using namespace std;
+    T = 1.0/(365.25*24.0*3600.0*observations.get_fs()); // T in yr
+
+    if (isnan(d_fixed)) d = param[0];
+    else                d = d_fixed;
+    
+    cout << "sigma     = " << sigma/pow(T,0.5*d)
+             			<< " " << unit << "/yr^" << 0.5*d << endl;   
+     
     if (Nparam==0) {
       printf("d         = %8.4lf (fixed)\n",d_fixed);
+      printf("kappa     = %8.4lf (fixed)\n",-2.0*d_fixed);
       printf("1-phi     = %le (fixed)\n",phi_fixed);
     } else if (Nparam==1) {
       printf("d         = %8.4lf +/- %6.4lf\n",param[0],error[0]);
+      printf("kappa     = %8.4lf +/- %6.4lf\n",-2.0*param[0],2.0*error[0]);
       printf("1-phi     = %le (fixed)\n",phi_fixed);
     } else {
       printf("d         = %8.4lf +/- %6.4lf\n",param[0],error[0]);
-      printf("1-phi     = %8.4lf +/- %6.4lf\n",param[1],error[1]);
+      printf("kappa     = %8.4lf +/- %6.4lf\n",-2.0*param[0],2.0*error[0]);
+      printf("1-phi     = %le +/- %le\n",param[1],error[1]);
     }
   }
 
@@ -282,26 +304,36 @@
 
 
 
-/*! Setup parameters for PSD computation
+/*! Set noise parameters for PSD computation.
+ *
+ * If phi_fixed is set, only d can vary and Nparam==1. 
+ * If d_fixed is also set, nothing can vary and Nparam==0.
+ * Otherwise, set both d and phi
  */
-//------------------------------------
-  void GenGaussMarkov::setup_PSD(void)
-//------------------------------------
+//---------------------------------------------------------------
+  void GenGaussMarkov::set_noise_parameters(double *params_fixed)
+//---------------------------------------------------------------
   {
     using namespace std;
-    cout << "Enter parameter value of d: ";
-    cin >> d_fixed;
-    cout << "Enter parameter value of 1-phi: ";
-    cin >> phi_fixed;
+    if (Nparam>=1) {
+      cout << "Enter parameter value of d: ";
+      cin >> d_fixed;
+      params_fixed[0] = d_fixed;
+    }
+    if (Nparam==2) {
+      cout << "Enter parameter value of 1-phi: ";
+      cin >> phi_fixed;
+      params_fixed[1] = phi_fixed;
+    }
   }
 
 
 
 /*! Compute PSD for given frequency
  */
-//--------------------------------------------
+//-----------------------------------------------
   double GenGaussMarkov::compute_G(double lambda)
-//--------------------------------------------
+//-----------------------------------------------
   {
     return 1.0/pow(4.0*(1-phi_fixed)*pow(sin(0.5*lambda),2.0) + 
 						pow(phi_fixed,2.0),d_fixed); 
@@ -316,13 +348,16 @@
 //---------------------------------------------------------------
   {
     int    i;
-    double I;
+    double I,*params_fixed=NULL;
 
     //--- get values of noise parameters
-    setup_PSD();
+    if (Nparam>0) params_fixed = new double[Nparam];
+    set_noise_parameters(params_fixed);
 
     //--- Use Langbein (2004) formula to compute h's
     h[0] = 1.0;
     for (i=1,I=1.0;i<m;i++,I+=1.0) 
 			h[i] = (d_fixed+I-1.0)/I*h[i-1]*(1.0-phi_fixed);
+
+    if (params_fixed!=NULL) delete[] params_fixed;
   }
