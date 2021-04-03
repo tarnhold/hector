@@ -1,12 +1,13 @@
 /*! \file    NoiseModel.cpp
  *  \author  Machiel Bos
  *
- * Main interface to various Noise model implementations. It allows the
- * combination of various noise models.
+ * Main interface to various stationary noise model implementations. It 
+ * allows the combination of various noise models.
  *
  * \date 13/ 1/2012  Santa Clara
  * \date  7/10/2012  Santa Clara
  * \date 16/ 1/2013  Santa Clara
+ * \date 15/ 7/2015  Santa Clara
  */
 //=============================================================================
   #include "NoiseModel.h"
@@ -27,10 +28,10 @@
 //=============================================================================
 //
 
-//++++++ Singleton stuff +++++++++++++++++
+//++++++ Singleton stuff ++++++++++++++++++
 bool NoiseModel::instanceFlag = false;
 NoiseModel* NoiseModel::singleton = NULL;
-//++++++++++++++++++++++++++++++++++++++++
+//+++++++++++++++++++++++++++++++++++++++++
 
 
 //--!!------------------------
@@ -42,13 +43,14 @@ NoiseModel* NoiseModel::singleton = NULL;
     Control  *control = Control::getInstance();
 
     try {
+      control->get_string("PhysicalUnit",unit);
       control->get_name_list("NoiseModels",noisemodel,Nmodels);
 //---------
       for (i=0;i<Nmodels;i++) cout << i << ") " << noisemodel[i] << endl;
 //---------
     } 
-    catch (const char* str) {
-      cerr << str << endl;
+    catch (exception &e) {
+      cerr << e.what() << endl;
       exit(EXIT_FAILURE);
     }
     if (Nmodels<1) {
@@ -64,7 +66,7 @@ NoiseModel* NoiseModel::singleton = NULL;
     modelIndv      = new NoiseModelBaseClass* [Nmodels];
     NparamIndv     = new int[Nmodels];
     phi            = new double[Nparam];
-    fraction_fixed = new double[Nparam];
+    fraction_fixed = new double[Nmodels];
    
     //--- Avoid problems, set h to NULL 
     h = NULL;
@@ -88,8 +90,14 @@ NoiseModel* NoiseModel::singleton = NULL;
         modelIndv[i] = new Powerlaw();
       } else if (noisemodel[i].compare("Flicker")==0) {
         modelIndv[i] = new Powerlaw(0.5);
+      } else if (noisemodel[i].compare("Power04")==0) {
+        modelIndv[i] = new Powerlaw(0.4);
       } else if (noisemodel[i].compare("RandomWalk")==0) {
         modelIndv[i] = new Powerlaw(1.0);
+      } else if (noisemodel[i].compare("FlickerGGM")==0) {
+        modelIndv[i] = new GenGaussMarkov(0.5);
+      } else if (noisemodel[i].compare("RandomWalkGGM")==0) {
+        modelIndv[i] = new GenGaussMarkov(1.0);
       } else if (noisemodel[i].compare("PowerlawApprox")==0) {
         modelIndv[i] = new PowerlawApprox;
       } else if (noisemodel[i].compare("FlickerApprox")==0) {
@@ -97,12 +105,7 @@ NoiseModel* NoiseModel::singleton = NULL;
       } else if (noisemodel[i].compare("ARFIMA")==0) {
         modelIndv[i] = new ARFIMA();
       } else if (noisemodel[i].compare("ARMA")==0) {
-        if (control->get_bool("firstdifference")==true) {
-          modelIndv[i] = new ARFIMA(-0.999);
-          //modelIndv[i] = new ARFIMA(-1.0);
-        } else {
-          modelIndv[i] = new ARFIMA(0.0);
-        }
+        modelIndv[i] = new ARFIMA(0.0);
       } else if (noisemodel[i].compare("GGM")==0) {
         modelIndv[i] = new GenGaussMarkov;
       } else {
@@ -227,19 +230,47 @@ NoiseModel* NoiseModel::singleton = NULL;
   void NoiseModel::show(double *param, double *error)
 //---------------------------------------------------
   {
-    int     i,j,k;
-    double  fraction;
+    int           i,j,k;
+    double        fraction,sigma_eta,d,T;
+    Likelihood    *likelihood=Likelihood::getInstance();
+    Observations  *observations=Observations::getInstance();
 
     using namespace std;
+    cout << endl;
+
+    //--- Get some information on sigma_eta and sampling period
+    sigma_eta = likelihood->get_sigma_eta();
+    T = 1.0/(365.25*24.0*3600.0*observations->get_fs()); // T in yr
     k = Nmodels-1;
     for (i=0;i<Nmodels;i++) {
       
       //--- Compute fraction and show it
       fraction = compute_fraction(i,param);
-      cout << endl << noisemodel[i] << ": fraction=" << fraction << endl;
+      cout << noisemodel[i] << ":" << endl 
+           << "fraction  = " << fraction << endl;
+      if (noisemodel[i].compare("Powerlaw")==0 ||
+          noisemodel[i].compare("PowerlawApprox")==0 ||
+          noisemodel[i].compare("GGM")==0) {
+        d = param[k];
+        cout << "sigma     = " << sigma_eta*sqrt(fraction)/pow(T,0.5*d)
+             << " " << unit << "/yr^" << 0.5*d << endl;
+      } else if (noisemodel[i].compare("FlickerGGM")==0 ||
+                 noisemodel[i].compare("FlickerApprox")==0 ||
+                 noisemodel[i].compare("Power04")==0 ||
+                 noisemodel[i].compare("RandomWalk")==0 ||
+                 noisemodel[i].compare("RandomWalkGGM")==0) {
+        d = modelIndv[i]->get_d_fixed();
+        cout << "sigma     = " << sigma_eta*sqrt(fraction)/pow(T,0.5*d)
+             << " " << unit << "/yr^" << 0.5*d << endl;
+      } else {
+        cout << "sigma     = " << sigma_eta*sqrt(fraction)
+             << " " << unit << endl;
+      }
 
       //--- Show value noise parameters
       modelIndv[i]->show(&param[k],&error[k]);
+      cout << endl;
+
 
       //--- move pointer in param-array
       k += NparamIndv[i];
@@ -380,7 +411,7 @@ NoiseModel* NoiseModel::singleton = NULL;
   void NoiseModel::create_noise(int m, double *y)
 //-----------------------------------------------
   {
-    int     i,j,k;
+    int     i,j,k,nyc;
     double  Scale,re,im;
 
     //--- Inverse FFT needs to be scaled
@@ -390,6 +421,7 @@ NoiseModel* NoiseModel::singleton = NULL;
     memset(y,0,m*sizeof(double));
 
     using namespace std;
+    nyc = 2*m/2 + 1;
     for (i=0;i<Nmodels;i++) {
       memset(&w[m],0,m*sizeof(double)); //--- zero padding of last m entries
       for (j=0;j<m;j++) w[j] = gsl_ran_gaussian(r_random,1.0);
@@ -397,8 +429,8 @@ NoiseModel* NoiseModel::singleton = NULL;
       fftw_execute_dft_r2c(plan_forward,w,F_w);
 
       //--- Compute F_h*F_w in frequency domain
-      k = i*(m+1);
-      for (j=0;j<m+1;j++) {
+      k = i*nyc;
+      for (j=0;j<nyc;j++) {
         re = F_h[k+j][0]*F_w[j][0]-F_h[k+j][1]*F_w[j][1];
         im = F_h[k+j][1]*F_w[j][0]+F_h[k+j][0]*F_w[j][1];
         F_w[j][0] = re;

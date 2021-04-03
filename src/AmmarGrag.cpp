@@ -15,6 +15,8 @@
   #include <ostream>
   #include <cmath>
   #include <cstdlib>
+  #include <cstdio>
+  #include <sys/time.h>
 
 //  #define DEBUG
 //  #define TIME
@@ -29,7 +31,6 @@
 //---!!---------------------
   {
     int           i,k,Status,nyc,offset;
-    DesignMatrix  *designmatrix=DesignMatrix::getInstance();
 
     using namespace std;
     //--- Make use of the fact that FFT can be performed in parallel
@@ -112,10 +113,6 @@
       fftw_execute_dft_r2c(plan_forward,&dummy[offset],&F_H[nyc*i]);
     }
     cblas_dcopy(m,x,1,dummy,1);
-#ifdef DEBUG
-    show_matrix("H",H,m,n);
-    show_matrix("x",x,m,1);
-#endif
     fftw_execute_dft_r2c(plan_forward,dummy,F_x);
     #pragma omp parallel for private(i,offset)
     for (i=0;i<Ngaps;i++) {
@@ -169,6 +166,9 @@
 /*! For the moment I use the slow AmmarGrag algorithm. To avoid too much
  *  copying around, I use l1 & l2 also as workspace. A side effect
  *  is that in the end, the pointers of l1 & l2 are switched when m is odd.
+ *
+ * This algorithm is based on chapter 3 of Ng's book on Toeplitz solvers
+ * To be precise, page 28, the Durbin-Levinson algorithm
  *
  *  \param[in]  gamma_x   first column of covariance matrix
  *  \param[out] l1        first part of the Gohberg Semencul matrix
@@ -294,17 +294,18 @@
  */
 //-----------------------------------------------------------------------
   void AmmarGrag::compute_LeastSquares(double *param,
-                              double& lndeterminant_, double& sigma_eta_)
+                                double& lndeterminant, double& sigma_eta)
 //-----------------------------------------------------------------------
   {
-    int         i,j,*ipiv;
-    double      product;
-    NoiseModel  *noisemodel=NoiseModel::getInstance();
-    time_t      start,end,start_total,end_total;
+    int            i,j,*ipiv;
+    double         product;
+    NoiseModel     *noisemodel=NoiseModel::getInstance();
+    struct timeval start,end,start_total;
+    long           mtime, seconds, useconds;  
 
 
     using namespace std;
-    time(&start_total);
+    gettimeofday(&start_total, NULL);
 
     //--- Create pivots
     ipiv = new int[Ngaps];
@@ -316,33 +317,27 @@
     noisemodel->get_covariance(param,m,gamma_x);
 
     //--- Perform step 1 : compute l1 and l2 vectors (including delta_m)
-    time(&start);
+    gettimeofday(&start, NULL);
     lndeterminant = step1(gamma_x,&l1,&l2);
-    time(&end);
-#ifdef DEBUG
-    show_Fmatrix("F_l1",F_l1,ny/2+1,1);
-    show_Fmatrix("F_l2",F_l2,ny/2+1,1);
-#endif
+    gettimeofday(&end, NULL);
 #ifdef TIME
-    cout << "step1: " << difftime(end,start) << " sec" << endl;
+    seconds  = end.tv_sec  - start.tv_sec;
+    useconds = end.tv_usec - start.tv_usec;
+    mtime = ((seconds) * 1000 + useconds/1000.0) + 0.5;
+    cout << "step1: " << mtime << " msec" << endl;
 #endif
 
     //--- Compute the auxiliary matrices A1, A2, y1, y2, G1 and G2;
-    time(&start);
+    gettimeofday(&start, NULL);
     step2(n,F_H,A1,A2);
     step2(1,F_x,y1,y2);
     if (Ngaps>0) step2(Ngaps,F_F,G1,G2);
-    time(&end);
-#ifdef DEBUG
-     show_matrix("y1",y1,m,1);
-     show_matrix("y2",y2,m,1);
-     show_matrix("A1",A1,m,n);
-     show_matrix("A2",A2,m,n);
-     show_matrix("G1",G1,m,Ngaps);
-     show_matrix("G2",G2,m,Ngaps);
-#endif
+    gettimeofday(&end, NULL);
 #ifdef TIME
-    cout << "step2: " << difftime(end,start) << " sec" << endl;
+    seconds  = end.tv_sec  - start.tv_sec;
+    useconds = end.tv_usec - start.tv_usec;
+    mtime = ((seconds) * 1000 + useconds/1000.0) + 0.5;
+    cout << "step2: " << mtime << " msec" << endl;
 #endif
 
     if (Ngaps==0) {
@@ -353,14 +348,8 @@
 						n,m,1.0,A1,m,-1.0,C_theta,n);
 
       //--- Now compute inv(A1'*A1 - A2'*A2)
-#ifdef DEBUG
-     show_matrix("before: C_theta",C_theta,n,n);
-#endif
       clapack_dpotrf(CblasColMajor,CblasUpper,n,C_theta,n);
       clapack_dpotri(CblasColMajor,CblasUpper,n,C_theta,n);
-#ifdef DEBUG
-     show_matrix("after: C_theta",C_theta,n,n);
-#endif
 
       //--- Compute A1'*y1 - A2'*y2
       cblas_dgemv(CblasColMajor,CblasTrans,m,n,1.0,A2,m,y2,1, 0.0,dummy,1);
@@ -371,9 +360,6 @@
       //--- Compute residuals
       cblas_dgemv(CblasColMajor,CblasNoTrans,m,n,1.0,A1,m,theta,1,-1.0,y1,1);
       cblas_dgemv(CblasColMajor,CblasNoTrans,m,n,1.0,A2,m,theta,1,-1.0,y2,1);
-#ifdef DEBUG
-     show_matrix("theta",theta,n,1);
-#endif
     
       product = cblas_ddot(m,y1,1,y1,1) - cblas_ddot(m,y2,1,y2,1);
 
@@ -381,16 +367,12 @@
 
     } else {
       //--- Compute M = Chol(G'*G)
-      time(&start);
       memset(M,0,(Ngaps*Ngaps)*sizeof(double)); // put M to zero
       cblas_dsyrk(CblasColMajor,CblasUpper,CblasTrans,
 						Ngaps,m,1.0,G2,m, 0.0,M,Ngaps);
       cblas_dsyrk(CblasColMajor,CblasUpper,CblasTrans,
 						Ngaps,m,1.0,G1,m,-1.0,M,Ngaps);
       clapack_dpotrf(CblasColMajor,CblasUpper,Ngaps,M,Ngaps);
-#ifdef DEBUG
-      show_matrix("M",M,Ngaps,Ngaps);
-#endif
 
       //--- Adjust lndeterminant
 #ifdef DEBUG
@@ -415,10 +397,6 @@
       cblas_dgemm(CblasColMajor,CblasTrans,CblasNoTrans,
 					Ngaps,1,m,1.0,G1,m,y1,m,-1.0,Qy,Ngaps);
       clapack_dgetrs(CblasColMajor,CblasTrans,Ngaps,1,M,Ngaps,ipiv,Qy,Ngaps);
-#ifdef DEBUG
-      show_matrix("QA",QA,Ngaps,n);
-      show_matrix("Qy",Qy,1,n);
-#endif
 
       //--- Compute C_theta
       cblas_dsyrk(CblasColMajor,CblasUpper,CblasTrans,
@@ -431,9 +409,6 @@
       //--- Now compute inv(A'*A)
       clapack_dpotrf(CblasColMajor,CblasUpper,n,C_theta,n);
       clapack_dpotri(CblasColMajor,CblasUpper,n,C_theta,n);
-#ifdef DEBUG
-      show_matrix("C_theta",C_theta,n,n);
-#endif
 
       //--- Compute A'*y - Q_A'*Q_y
       cblas_dgemv(CblasColMajor,CblasTrans,
@@ -442,15 +417,9 @@
 				m,n,1.0,A2,m,y2,1, 1.0,dummy,1);
       cblas_dgemv(CblasColMajor,CblasTrans,
 				m,n,1.0,A1,m,y1,1,-1.0,dummy,1);
-#ifdef DEBUG
-      show_matrix("dummy",dummy,n,1);
-#endif
 
       //--- Finally, perform Least-Squares
       cblas_dsymv(CblasColMajor,CblasUpper,n,1.0,C_theta,n,dummy,1,0.0,theta,1);
-#ifdef DEBUG
-      show_matrix("theta",theta,n,1);
-#endif
 
       //--- Compute residuals t1=A1*theta-y1 -> stored in y1
       cblas_dgemv(CblasColMajor,CblasNoTrans,m,n,1.0,A1,m,theta,1,-1.0,y1,1);
@@ -461,11 +430,6 @@
       cblas_dgemm(CblasColMajor,CblasTrans,CblasNoTrans,
 					Ngaps,1,m,1.0,G1,m,y1,m,-1.0,Qt,Ngaps);
       clapack_dgetrs(CblasColMajor,CblasTrans,Ngaps,1,M,Ngaps,ipiv,Qt,Ngaps);
-#ifdef DEBUG
-      show_matrix("t1",y1,m,1);
-      show_matrix("t2",y2,m,1);
-      show_matrix("Q_t",Qt,Ngaps,1);
-#endif
 
       product = cblas_ddot(m,y1,1,y1,1) - cblas_ddot(m,y2,1,y2,1) -
 						cblas_ddot(Ngaps,Qt,1,Qt,1);
@@ -475,11 +439,6 @@
     //--- compute sigma_eta
     sigma_eta = sqrt(product/static_cast<double>(m-Ngaps));
 
-    // Copy sigma_eta and lndeterminant to the variables sigma_eta_ and 
-    // lndeterminant_ which are returned to the caller.
-    sigma_eta_     = sigma_eta;
-    lndeterminant_ = lndeterminant;
-
     //--- free memory
     delete[] ipiv;
 
@@ -488,8 +447,11 @@
     cout << "sigma_eta =" << sigma_eta << endl;
 #endif
 #ifdef TIME
-    time(&end_total);
-    cout << "Total LS: " << difftime(end_total,start_total) << " sec" << endl;
+    gettimeofday(&end, NULL);
+    seconds  = end.tv_sec  - start_total.tv_sec;
+    useconds = end.tv_usec - start_total.tv_usec;
+    mtime = ((seconds) * 1000 + useconds/1000.0) + 0.5;
+    cout << "Total LS: " << mtime << " msec" << endl;
 #endif
 
   }

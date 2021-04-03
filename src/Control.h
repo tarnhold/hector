@@ -14,6 +14,8 @@
 
 #ifndef __CONTROL
   #define __CONTROL
+  #include <exception>
+  #include <stdexcept>
   #include <cstdio>
   #include <string>
   #include <fstream>
@@ -25,16 +27,16 @@
   class Control 
   {
     private:
-      std::fstream  fs;
-      std::string   ctl_file;
-      void     find_label(const std::string label);
-      void     open_file(void);
-      void     close_file(void);
+      std::fstream   fs;
+      std::string    ctl_file;
+      void           find_label(const std::string label);
+      void           open_file(void);
+      void           close_file(void);
 
     public:
-      static Control* getInstance(std::string filename = "estimatetrend.ctl");
       Control(std::string file);
       ~Control(void);
+      static Control* getInstance(std::string filename = "estimatetrend.ctl");
       void     get_name_list(const std::string label, std::string *value, 
 									int& n);
       void     get_string(const std::string label, std::string& value);

@@ -1,9 +1,10 @@
 /*! \file    NoiseModelBaseClass.h
  *  \author  Machiel Bos
  *
- * Template of class to which the noise models must conform.
+ * Template of class to which the stationary noise models must conform.
  *
- * \date 7/10/2012  Santa Clara
+ * \date  7/10/2012  Santa Clara
+ * \date 15/ 7/2015  Santa Clara
  */
 //=============================================================================
 
@@ -17,6 +18,7 @@
         virtual void    get_covariance(double *param,int m,double *gamma_x)=0;
         virtual void    show(double *param, double *error)=0;
         virtual int     get_Nparam(void)=0;
+        virtual double  get_d_fixed(void)=0;
         virtual double  compute_penalty(double *param)=0;
         virtual void    setup_PSD(void)=0;
         virtual double  compute_G(double lambda)=0;

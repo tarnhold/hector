@@ -27,12 +27,9 @@
 //---!!-----------------
   {
     int           i,j;
-    NoiseModel    *noisemodel=NoiseModel::getInstance();
 
     using namespace std;
-    //--- get number of noise model parameters to estimate
-    Nparam = noisemodel->get_Nparam();
-    N      = m-Ngaps;
+    N = m-Ngaps;
 #ifdef DEBUG
     cout << "Nparam=" << Nparam << ", m=" << m << ", n=" << n 
          << ", Ngaps=" << Ngaps << ", N=" << N << endl;
@@ -58,7 +55,8 @@
     }
 
     //--- Already eliminate rows of missing data from x and H and store the
-    //    results in dummy_x and dummy_H.
+    //    results in dummy_x and dummy_H. These latter two will be used in
+    //    future matrix operations. H & x are no longer needed.
     j=0;
     for (i=0;i<m;i++) {
       if (!isnan(x[i])) {
@@ -103,7 +101,7 @@
  */
 //-------------------------------------------------------------------------
   void FullCov::compute_LeastSquares(double *param, double& 
-					lndeterminant_, double& sigma_eta_)
+					  lndeterminant, double& sigma_eta)
 //-------------------------------------------------------------------------
   {
     int         i,j,i0,j0,i1,j1,*ipiv;
@@ -189,11 +187,6 @@
     //--- compute sigma_eta
     sigma_eta = sqrt(product/static_cast<double>(N)); 
 
-    //--- sigma_eta and lndeterminant are now set, copy their values
-    //    to the local variables sigma_eta_ and lndeterminant_ which
-    //    are returned to the caller.
-    sigma_eta_     = sigma_eta;
-    lndeterminant_ = lndeterminant;
 #ifdef DEBUG
     cout << "sigma_eta     = " << sigma_eta << endl;
     cout << "product       = " << product << endl;

@@ -33,8 +33,8 @@
     try { 
       factor = control->get_double("IQ_factor");
     }
-    catch (const char* str) {
-      cerr << str << endl;
+    catch (exception &e) {
+      cerr << e.what() << endl;
       exit(EXIT_FAILURE);
     }
   }

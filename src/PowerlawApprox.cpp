@@ -47,8 +47,8 @@
     try {
       ms = control->get_int("TimeNoiseStart"); // number of days before t0
     }
-    catch (const char* str) {
-      cerr << str << endl;
+    catch (exception &e) {
+      cerr << e.what() << endl;
       exit(EXIT_FAILURE);
     }
   }
@@ -74,15 +74,8 @@
     fftw_complex        *F_h1=NULL,*F_h2=NULL,*F_C=NULL;
 
     using namespace std;
-    //--- Observation.cpp should already have checked that label 
-    //    firstdifference exists.
-    if (control->get_bool("firstdifference")==true) { 
-      cerr << "PowerlawApprox: I don't allow first difference for " <<
-              "Approximated power-law noise!" << endl;
-      exit(EXIT_FAILURE);
-    } else {
-      d_max = 0.85;
-    }
+    //--- An approximation is an approximation. Set d_max
+    d_max = 0.85;
 
     //--- spectral index is stored in first element
     if (estimate_spectral_index==true) {
@@ -194,7 +187,8 @@
     }
  
     cout << fixed << setprecision(4); 
-    cout << "d = " << d << " +/- " << error[0] << endl;
+    cout << "d         = " << d << " +/- " << error[0] << endl;
+    cout << "kappa     = " << -2*d << " +/- " << 2*error[0] << endl;
   }
 
 

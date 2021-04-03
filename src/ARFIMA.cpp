@@ -40,8 +40,8 @@
       p = control->get_int("AR_p");
       q = control->get_int("MA_q");
     }
-    catch (const char* str) {
-      cerr << str << endl;
+    catch (exception &e) {
+      cerr << e.what() << endl;
       exit(EXIT_FAILURE);
     }
 
@@ -336,8 +336,8 @@
       cerr << "Oops! This should not happen... aborting!" << endl;
       exit(EXIT_FAILURE);
     } else {
-      FI_fraction[h_max] = exp(gamma(1.0-2.0*d))/
-					pow(exp(gamma(1.0-d)),2.0); //--- i=0
+      FI_fraction[h_max] = tgamma(1.0-2.0*d)/
+					pow(tgamma(1.0-d),2.0); //--- i=0
       //--- forward recurrence
       for (i=1;i<=(p+q);i++) {
         FI_fraction[h_max+i]   = FI_fraction[h_max+i-1]*
@@ -499,11 +499,7 @@
       } else if (i>=p && i<(p+q)) {
         printf("MA[%1d] = %8.4lf +/- %6.4lf\n",i+1-p,param[i],error[i]);
       } else if (i==(p+q)) {
-        if (control->get_bool("firstdifference")==true) {
-          printf("d     = %8.4lf +/- %6.4lf\n",param[i]+1.0,error[i]);
-        } else {
-          printf("d     = %8.4lf +/- %6.4lf\n",param[i],error[i]);
-        }
+        printf("d     = %8.4lf +/- %6.4lf\n",param[i],error[i]);
       }
     }
   }

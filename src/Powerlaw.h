@@ -25,6 +25,7 @@
         void      get_covariance(double *param, int m, double *gamma_x);
         void      show(double *param, double *error);
         int       get_Nparam(void);
+        double    get_d_fixed(void) {return d_fixed;};
         double    compute_penalty(double *param);
         void      setup_PSD(void);
         double    compute_G(double lambda);

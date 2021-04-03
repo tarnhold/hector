@@ -1,7 +1,8 @@
 /*! \filename RemoveOutliers.h
  *  \author   Machiel Bos
  *
- * \date 6/7/2012  Santa Clara
+ * \date  6/7/2012  Santa Clara
+ * \date 30/9/2015  Santa Clara
  */
 //==============================================================================
 
@@ -17,7 +18,8 @@
     class RemoveOutliers
     {
       private:
-        double   factor;
+        int      SegmentLength;
+        double   factor,StudentT;
        
       public:
         RemoveOutliers(void);

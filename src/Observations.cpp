@@ -59,15 +59,15 @@ Observations* Observations::singleton = NULL;
       if (directory.at(directory.length()-1)!='/') {
         directory += "/";
       }
-    } catch (const char* str) {
-      cerr << str << endl;
+    } catch (exception &e) {
+      cerr << e.what() << endl;
       exit(EXIT_FAILURE);
     }
 
     //--- Is a scale factor different from 1 required?
     try {
       scale_factor = control->get_double("ScaleFactor");
-    } catch (const char* str) {
+    } catch (exception &e) {
       scale_factor = 1.0;
     }
 
@@ -87,9 +87,6 @@ Observations* Observations::singleton = NULL;
     } else if (extension.compare("neu")==0) {
       cout << "Data format: year fraction, North, East & Up" << endl;
       read_observations = &Observations::read_neu;
-    } else if (extension.compare("pos")==0) {
-      cout << "Plate Boundary Observatory data format" << endl;
-      read_observations = &Observations::read_pos;
     } else if (extension.compare("rlrdata")==0) {
       cout << "Data format: monthly PSMSL data" << endl;
       read_observations = &Observations::read_PSMSL_monthly;
@@ -110,9 +107,8 @@ Observations* Observations::singleton = NULL;
     //--- For the handling of the gaps I need to know some things
     try {
       interpolate_data = control->get_bool("interpolate");
-      first_difference = control->get_bool("firstdifference");
-    } catch (const char* str) {
-      cerr << str << endl;
+    } catch (exception &e) {
+      cerr << e.what() << endl;
       exit(EXIT_FAILURE);
     }
 
@@ -120,16 +116,10 @@ Observations* Observations::singleton = NULL;
     if (interpolate_data==true) {
       make_continuous(true);
     } else {
-      //--- The Levinson & AmmarGrag method cannot deal with gaps in the
+      //--- The AmmarGrag method cannot deal with gaps in the
       //    time vector, only the FullCov method can. Therefore, fill gaps 
       //    with NaN's to make time-series continuous.
       make_continuous(false);
-    }
-
-    //--- Taking the first difference is necessary? 
-    if (first_difference==true) {
-      //--- Data is already continous
-      take_first_difference();
     }
 
     //--- Now that I have read both the offset information and the data,
@@ -160,8 +150,12 @@ Observations* Observations::singleton = NULL;
     int            component_;
     char           line[80];
     double         MJD,T;
+    LogEntry       logdummy;
+    ExpEntry       expdummy;
 
     offsets.clear();
+    postseismiclog.clear();
+    postseismicexp.clear();
     while (fp.peek() == '#') {
       fp.getline(line,80);
 #ifdef DEBUG
@@ -190,6 +184,20 @@ Observations* Observations::singleton = NULL;
           cerr << "Could not understand sampling period-line:" << line << endl;
           exit(EXIT_FAILURE);
         }
+      } else if (strncmp("# log",line,5)==0) {
+        if (sscanf(&line[5],"%lf %lf",&logdummy.MJD,&logdummy.T)==2) {
+          postseismiclog.push_back(logdummy);
+        } else {
+          cerr << "Could not understand postseismic-log line:" << line << endl;
+          exit(EXIT_FAILURE);
+        }
+      } else if (strncmp("# exp",line,5)==0) {
+        if (sscanf(&line[5],"%lf %lf",&expdummy.MJD,&expdummy.T)==2) {
+          postseismicexp.push_back(expdummy);
+        } else {
+          cerr << "Could not understand postseismic-exp line:" << line << endl;
+          exit(EXIT_FAILURE);
+        }
       }
     }
   }
@@ -213,8 +221,8 @@ Observations* Observations::singleton = NULL;
     //--- We need to know which component is requested.
     try {
       control->get_string("component",component_name);
-    } catch (const char* str) {
-      cerr << str << endl;
+    } catch (exception &e) {
+      cerr << e.what() << endl;
       exit(EXIT_FAILURE);
     }
     if      (component_name.compare("East")==0)  component=0;
@@ -299,17 +307,6 @@ Observations* Observations::singleton = NULL;
       cout << j << " : offset=" << offsets[j] << endl;
 #endif
 
-    //--- If first-difference of data is taken, then treat those observations
-    //    as outliers.
-    if (first_difference==true) {
-      for (i=0;i<offsets.size();i++) {
-        for (j=1;j<m;j++) {
-          if (t[j-1]<offsets[i] && t[j]+TINY>offsets[i]) {
-            set_one_x(j,NaN);
-          }
-        }
-      }
-    }
   }
 
 
@@ -416,7 +413,7 @@ Observations* Observations::singleton = NULL;
       read_external_header(fp_offset);
       fp_offset.close();
     }
-    catch (const char* str) {
+    catch (exception &e) {
       //--- No OffsetFile found, use data file instead
     }
 
@@ -438,8 +435,10 @@ Observations* Observations::singleton = NULL;
 #ifdef DEBUG
         cout << "Found x " << obs << endl;
 #endif
-        t.push_back(MJD);
-        x.push_back(scale_factor*obs);
+        if (!isnan(obs)) {
+          t.push_back(MJD);
+          x.push_back(scale_factor*obs);
+        }
       } else {
         cerr << "Unable to understand line: " << line;
         exit(EXIT_FAILURE);
@@ -513,8 +512,8 @@ Observations* Observations::singleton = NULL;
     //--- Which component needs to be analysed?
     try {
       control->get_string("component",component_name);
-    } catch (const char* str) {
-      cerr << str << endl;
+    } catch (exception &e) {
+      cerr << e.what() << endl;
       exit(EXIT_FAILURE);
     }
     if      (component_name.compare("East")==0)  component=0;
@@ -544,7 +543,7 @@ Observations* Observations::singleton = NULL;
       read_external_header(fp_offset);
       fp_offset.close();
     }
-    catch (const char* str) {
+    catch (exception &e) {
       //--- No OffsetFile found, use data file instead
     }
 
@@ -596,8 +595,8 @@ Observations* Observations::singleton = NULL;
     //--- Which component needs to be analysed?
     try {
       control->get_string("component",component_name);
-    } catch (const char* str) {
-      cerr << str << endl;
+    } catch (exception &e) {
+      cerr << e.what() << endl;
       exit(EXIT_FAILURE);
     }
     if      (component_name.compare("East")==0)  component=1;
@@ -684,96 +683,6 @@ Observations* Observations::singleton = NULL;
 
 
 
-/*! Read the Plate Boundary Observatory time-series format.
- */
-//-------------------------------------------------
-  void Observations::read_pos(std::string filename)
-//-------------------------------------------------
-  {
-    using namespace std;
-    bool          estimateoffsets;
-    fstream       fp,fp_offset;
-    char          line[300];
-    string        component_name,offset_filename;
-    int           i,component;
-    double        MJD,obs[6];
-    Control       *control = Control::getInstance();
-
-    //--- Which component needs to be analysed?
-    try {
-      control->get_string("component",component_name);
-    } catch (const char* str) {
-      cerr << str << endl;
-      exit(EXIT_FAILURE);
-    }
-    if      (component_name.compare("X")==0)     component=0;
-    else if (component_name.compare("Y")==0)     component=1;
-    else if (component_name.compare("Z")==0)     component=2;
-    else if (component_name.compare("North")==0) component=3;
-    else if (component_name.compare("East")==0)  component=4;
-    else if (component_name.compare("Up")==0)    component=5;
-    else {
-      cerr << "Unknown component name: " << component_name << endl;
-      exit(EXIT_FAILURE);
-    }
-
-    //--- Read header information if it exists
-    try {
-      estimateoffsets = control->get_bool("estimateoffsets");
-    }
-    catch (const char* str) {
-      cerr << str << endl;
-      exit(EXIT_FAILURE);
-    }
-    if (estimateoffsets==true) {
-      try {
-        control->get_string("OffsetFile",offset_filename);
-        fp_offset.open(offset_filename.c_str(),ios::in);
-        if (!fp_offset.is_open()) {
-          cerr << "Could not open " << offset_filename << endl;
-          exit(EXIT_FAILURE);
-        }
-        read_header(fp_offset,component);
-        fp_offset.close();
-      }
-      catch (const char* str) {
-        //--- No OffsetFile found....
-      }
-    }
-
-    //--- Open file
-    fp.open(filename.c_str(),ios::in);
-    if (!fp.is_open()) {
-      cerr << "Could not open " << filename << endl;
-      exit(EXIT_FAILURE);
-    }
-
-    //--- Skip header of 9 lines
-    for (i=0;i<9;i++)  fp.getline(line,300);
-
-    //--- Read file
-    fp.getline(line,300);
-    while (!fp.eof()) {
-      if (sscanf(line,"%*d%*d%lf%lf%lf%lf%*f%*f%*f%*f%*f%*f%*f%*f%*f%lf%lf%lf",
-		  &MJD,&obs[0],&obs[1],&obs[2],&obs[3],&obs[4],&obs[5])==7) {
-        t.push_back(MJD);
-        x.push_back(scale_factor*obs[component]);
-      } else {
-        cerr << "Unable to understand line: " << line;
-        exit(EXIT_FAILURE);
-      }
-      fp.getline(line,300);
-    }
-
-    //--- Close file
-    fp.close();
-
-    //--- Determine sampling period
-    if (isnan(fs)) determine_fs();
-  }
-
-
-
 /* For plotting purposes it might be interesting to save the observations in
  * MJD, Observations format
  */
@@ -789,8 +698,8 @@ Observations* Observations::singleton = NULL;
 
     try {
       control->get_string("OutputFile",filename);
-    } catch (const char* str) {
-      cerr << str << endl;
+    } catch (exception &e) {
+      cerr << e.what() << endl;
       exit(EXIT_FAILURE);
     }
     cout.precision(5);
@@ -973,39 +882,6 @@ Observations* Observations::singleton = NULL;
 
 
 
-/* If the data is non-stationary, then taking the first-difference may
- * make it stationary. Note that you have to be carefull with gaps.
- */
-//----------------------------------------------
-  void Observations::take_first_difference(void)
-//----------------------------------------------
-  {
-    using namespace std;
-    int             i;
-    vector<double>  t_new,x_new;
-
-    //--- Start with empty new vectors
-    t_new.clear();
-    x_new.clear();
-
-    //--- Take first difference
-    for (i=1;i<t.size();i++) {
-      t_new.push_back(t[i]);
-      //--- I hope the following works when x[i] or x[i-1] is NaN.
-      x_new.push_back(x[i]-x[i-1]);
-    }
-
-    //---- Old t and x values are no longer necessary
-    t.clear();
-    x.clear();
-
-    //---- Copy t_new to t and x_new to x
-    for (i=0;i<t_new.size();i++) t.push_back(t_new[i]);
-    for (i=0;i<x_new.size();i++) x.push_back(x_new[i]);
-  }
-
-
-
 /*! Copy offsets to offsets_
  */
 //-------------------------------------------------------------
@@ -1018,6 +894,49 @@ Observations* Observations::singleton = NULL;
     for (i=0;i<offsets.size();i++) {
       offsets_.push_back(offsets[i]);
     }
+  }
+
+
+
+/*! Copy postseismiclog to postseismiclog_
+ */
+//-----------------------------------------------------------------------------
+  void Observations::get_postseismiclog(std::vector<LogEntry>& postseismiclog_)
+//-----------------------------------------------------------------------------
+  {
+    int   i;
+
+    postseismiclog_.clear();
+    for (i=0;i<postseismiclog.size();i++) {
+      postseismiclog_.push_back(postseismiclog[i]);
+    }
+  }
+
+
+
+/*! Copy postseismicexp to postseismicexp_
+ */
+//-----------------------------------------------------------------------------
+  void Observations::get_postseismicexp(std::vector<ExpEntry>& postseismicexp_)
+//-----------------------------------------------------------------------------
+  {
+    int   i;
+
+    postseismicexp_.clear();
+    for (i=0;i<postseismicexp.size();i++) {
+      postseismicexp_.push_back(postseismicexp[i]);
+    }
+  }
+
+
+
+/*! Add offset
+ */
+//-----------------------------------------
+  void Observations::add_offset(double MJD)
+//-----------------------------------------
+  {
+    offsets.push_back(MJD);
   }
 
 

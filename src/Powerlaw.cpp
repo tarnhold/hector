@@ -59,13 +59,8 @@
       d = d_fixed;
     }
     
-    if (control->get_bool("firstdifference")==true) { 
-      d_max = 1.499;
-      alpha = 2*d-2;
-    } else {
-      d_max = 0.499;
-      alpha = 2*d;
-    }
+    d_max = 0.499;
+    alpha = 2*d;
 
     //--- Sanity check
     if (d-TINY>=d_max || d+TINY<=-0.5) {
@@ -74,7 +69,7 @@
     }
  
     //--- Form covariance matrix
-    gamma_x[0] = exp(gamma(1.0-alpha))/pow(exp(gamma(1.0-0.5*alpha)),2.0);
+    gamma_x[0] = tgamma(1.0-alpha)/pow(tgamma(1.0-0.5*alpha),2.0);
 					
     for (j=0;j<m-1;j++) {
       tau = static_cast<double>(j+1);
@@ -103,7 +98,8 @@
     }
 
     cout << fixed << setprecision(4);
-    cout << "d = " << d << " +/- " << error[0] << endl;
+    cout << "d         = " << d << " +/- " << error[0] << endl;
+    cout << "kappa     = " << -2*d << " +/- " << 2*error[0] << endl;
   }
 
 
@@ -135,16 +131,9 @@
     using namespace std;
     if (estimate_spectral_index==true) {
       //--- d
-      if (control->get_bool("firstdifference")==true) {
-        if (param[0]>1.499) {
-          penalty += (param[0]-1.499)*LARGE;
-          param[0] = 1.499;
-        }
-      } else {
-        if (param[0]>0.499) {
-          penalty += (param[0]-0.499)*LARGE;
-          param[0] = 0.499;
-        }
+      if (param[0]>0.499) {
+        penalty += (param[0]-0.499)*LARGE;
+        param[0] = 0.499;
       } 
       if (param[0]<-0.5) {
         penalty += (-0.5-param[0])*LARGE;

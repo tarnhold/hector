@@ -12,7 +12,7 @@
  *
  * References:
  * John Pearson (2009): "Computation of Hypergeometric Functions, Master 
-          Thesis, University of Oxford. 
+ *        Thesis, University of Oxford. 
  */
 //==============================================================================
   #include "HyperGeo.h"
@@ -294,15 +294,15 @@
           (abs(c)>1.0-TINY && abs(a)<30.0 && abs(b)<30.0 && abs(c)<50.0)) {
         try {
           h = singlefraction2F1(a,b,c,z);
-        } catch (const char * str) {
+        } catch (exception &e) {
 #ifdef DEBUG
-          cerr << str << endl;
+          cerr << e.what() << endl;
           cerr << "HyperGeo::_2F1 - Now trying RK4 method..." << endl;
 #endif
           try {
             h = RK4(a,b,c,z);
-          } catch (const char * str) {
-            cerr << str << endl;
+          } catch (exception &e) {
+            cerr << e.what() << endl;
             cerr << "HyperGeo:: 1) Am giving up..." << endl;
             exit(EXIT_FAILURE);
           }
@@ -346,8 +346,8 @@
     if (abs(a)>30.0-TINY || abs(b)>30.0-TINY || abs(c)>30.0-TINY) {
       try {
         h = TaylorB(a,b,c,z);
-      } catch (const char * str) {
-        cerr << str << endl;
+      } catch (exception &e) {
+        cerr << e.what() << endl;
         exit(EXIT_FAILURE);
       }
 

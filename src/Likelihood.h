@@ -25,23 +25,22 @@
 
       protected:
         const double        tpi;
-        int                 m,n,Nparam,Ngaps;
-        double              *theta,*H,*x,*t,*C_theta,sigma_eta,lndeterminant;
-        double              *F;
+        int                 n,m,Ngaps,Nparam;
+        double              *x,*H,*F,*theta,*C_theta,sigma_eta;
 
       public:
         Likelihood(void);
-        virtual ~Likelihood(void)=0;
+        virtual ~Likelihood(void);
         static Likelihood*  getInstance(void);
-        void                show_leastsquares(void);
-        int                 get_Nparam(void) {return Nparam;};
         virtual void        compute_LeastSquares(double *param, 
 			       double& lndeterminant_, double& sigma_eta_)=0;
         double              compute(double *param);
+        void                show_leastsquares(void);
         void                show_matrix(const char name[], double *A,
-							      int m, int n);
-        void                show_Fmatrix(const char name[], fftw_complex *A,
-							      int m, int n);
+                                                              int m, int n);
+        void                set_sigma_eta(double sigma_eta_) {
+						   sigma_eta = sigma_eta_;};
+        double              get_sigma_eta(void) {return sigma_eta;};
     };
 
   #endif

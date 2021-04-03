@@ -20,15 +20,18 @@
     class DesignMatrix
     {
       private:
-        static bool         instanceFlag;
-        static DesignMatrix *singleton;
-        const double        tpi;
-        std::string         unit;
-        int                 n,m,Ngaps,n_periodic_signals,n_offsets;
-        double              dt,*H,*F,*periods,th;
-        std::vector<double> offsets;
-        bool                first_difference,quadratic_term;
-        bool                seasonal_signal,halfseasonal_signal;
+        static bool            instanceFlag;
+        static DesignMatrix    *singleton;
+        const double           tpi;
+        std::string            unit;
+        int                    n,m,Ngaps,n_periodic_signals,n_offsets;
+        int                    n_postseismiclog,n_postseismicexp;
+        double                 dt,*H,*F,*periods,th;
+        std::vector<double>    offsets;
+        std::vector<LogEntry>  postseismiclog;
+        std::vector<ExpEntry>  postseismicexp;
+        bool                   quadratic_term;
+        bool                   seasonal_signal,halfseasonal_signal;
 
       public:
         DesignMatrix(void);

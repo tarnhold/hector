@@ -22,13 +22,13 @@
 //---!!-----------------------------
   {
     using namespace std;
-    Control       *control=Control::getInstance();
-    NoiseModel    *noisemodel=NoiseModel::getInstance();
-    int           i,j,k,n_simulations,m,ms;
-    string        directory,label,filename;
-    double        *y,*MJD,dt,ts;
-    FILE          *fp;
-    stringstream  ss;
+    Control          *control=Control::getInstance();
+    NoiseModel       *noisemodel=NoiseModel::getInstance();
+    int              i,j,k,n_simulations,m,ms;
+    string           directory,label,filename;
+    double           *y,*MJD,dt,ts;
+    FILE             *fp;
+    stringstream     ss;
   
     //--- Which noise models must be used
     try {
@@ -42,8 +42,8 @@
       dt            = control->get_double("SamplingPeriod");
       ms            = control->get_int("TimeNoiseStart"); 
     }
-    catch (const char* str) {
-      cerr << str << endl;
+    catch (exception &e) {
+      cerr << e.what() << endl;
       exit(EXIT_FAILURE);
     }
 
@@ -64,6 +64,7 @@
     for (i=0;i<n_simulations;i++) {
       cout << "simulation run:" << i << endl;
       //--- Open file to store time-series
+      ss.str("");
       ss << i;
       filename = directory + label + "_" + ss.str() + ".mom";
       fp = fopen(filename.c_str(),"w");

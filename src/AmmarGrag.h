@@ -12,9 +12,11 @@
     #if OMP == 1
       #include <omp.h>
     #endif
-    #include "Likelihood.h"
     #include <complex>
     #include <fftw3.h>
+    #include "Likelihood.h"
+    #include "NoiseModel.h"
+
     extern "C" {
       #include "cblas.h"
       #include "clapack.h"
@@ -37,7 +39,7 @@
         AmmarGrag(void);
         ~AmmarGrag(void);
         virtual void    compute_LeastSquares(double *param,
-                                double& lndeterminant_, double& sigma_eta_);
+                                  double& lndeterminant, double& sigma_eta);
     };
 
   #endif 

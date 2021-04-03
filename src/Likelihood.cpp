@@ -3,7 +3,7 @@
  *
  * The core class that computes the likelihood function. The exact method 
  * for computing the likelihood and Least-Squares bit is define in the derived
- * classes LevinsonGap, LevinsonNoGap, AmmarGrag and FullCov classes.
+ * classes AmmarGrag and FullCov classes.
  *
  * \date 13/ 1/2012   Coimbra Library
  * \date  7/10/2012   Santa Clara
@@ -20,12 +20,10 @@
 
   //--- To avoid circular include problems, I put the following includes here
   //    The explanation is that Likelihood.h defines __LIKELIHOOD and then it
-  //    includes "LevinsonGap.h" which again tries to include "Likelihood.h"
+  //    includes "AmmarGrag.h" which again tries to include "Likelihood.h"
   //    because __LIKELIHOOD is now defined, the class definition is not
-  //    read and the LevinsonGap class cannot determine well its base class,
+  //    read and the AmmarGrag class cannot determine well its base class,
   //    causing problems.
-  #include "LevinsonNoGap.h"
-  #include "LevinsonGap.h"
   #include "AmmarGrag.h"
   #include "FullCov.h"
 
@@ -58,7 +56,7 @@ Likelihood* Likelihood::singleton = NULL;
       }
       //--- If keyword is not found, then use AmmarGrag is percentage of 
       //    missing data is less than 50%, otherwise use FullCov.
-      catch (const char* str) {
+      catch (exception &e) {
         fraction = static_cast<double>(Ngaps)/
 	     static_cast<double>(observations->number_of_observations());
         if (fraction<0.5) {
@@ -69,10 +67,7 @@ Likelihood* Likelihood::singleton = NULL;
       }   
       cout << endl << "----------------" << endl << "  " << methodname
            << endl << "----------------" << endl;
-      if (methodname.compare("Levinson")==0) {
-        if (Ngaps==0)  singleton = new LevinsonNoGap();
-        else           singleton = new LevinsonGap();
-      } else if (methodname.compare("AmmarGrag")==0) {
+      if (methodname.compare("AmmarGrag")==0) {
         singleton = new AmmarGrag();
       } else if (methodname.compare("FullCov")==0) {
         singleton = new FullCov();
@@ -92,7 +87,12 @@ Likelihood* Likelihood::singleton = NULL;
   {
     Observations   *observations=Observations::getInstance();
     DesignMatrix   *designmatrix=DesignMatrix::getInstance();
-    NoiseModel     *noisemodel=NoiseModel::getInstance();
+    NoiseModel     *noisemodel=NoiseModel::getInstance(); 
+    double         *t=NULL;
+
+    //--- The matrices H and F and vector x are not really needed in this
+    //    class. However, they are needed in AmmarGrag.cpp which is reading
+    //    the matrices from here! Think of Likelihood as BaseClass. 
 
     //---- Just be elegant
     x = H = NULL;
@@ -117,6 +117,8 @@ Likelihood* Likelihood::singleton = NULL;
     C_theta = new double[n*n];
     memset(theta,0,(n)*sizeof(double));     // put theta to zero
     memset(C_theta,0,(n*n)*sizeof(double)); // put C_theta to zero
+
+    if (t!=NULL)       delete[]  t;
   }
 
 
@@ -127,7 +129,6 @@ Likelihood* Likelihood::singleton = NULL;
   Likelihood::~Likelihood(void)
 //-----------------------------
   {
-    if (t!=NULL)       delete[]  t;
     if (x!=NULL)       delete[]  x;
     if (H!=NULL)       delete[]  H;
     if (F!=NULL)       delete[]  F;
@@ -213,41 +214,12 @@ Likelihood* Likelihood::singleton = NULL;
     fp.open(filename,ios::out);
     cout << name << "=" << endl;
     for (i=0;i<m;i++) {
-      for (j=0;j<n;j++) cout << A[i+m*j] << "  ";
+      for (j=0;j<n;j++) printf("%7.3lf  ",A[i+m*j]);
       cout << endl;
-      for (j=0;j<n;j++) fp << setprecision(4) << setw(9) << A[i+m*j] << "  ";
+      for (j=0;j<n;j++) fp << setprecision(5) << setw(10) << A[i+m*j] << "  ";
       fp << endl;
     }
     fp.close();
   }
 
 
-
-/*! For debugging it's convenient to have a simple way of showing a
- *  Fourier transformed matrix on the screen (and to a file).
- */
-//------------------------------------------------------------------------
-  void Likelihood::show_Fmatrix(const char name[], fftw_complex *A, 
-							     int m, int n)
-//------------------------------------------------------------------------
-  {
-    using namespace std;
-    int     i,j;
-    fstream fp;
-    char    filename[80];
-    
-    sprintf(filename,"%s.dat",name);
-    fp.open(filename,ios::out);
-    cout << name << "=" << endl;
-    for (i=0;i<m;i++) {
-      for (j=0;j<n;j++) cout << A[i+m*j][0] << " ";
-      cout << endl; 
-      for (j=0;j<n;j++) cout << A[i+m*j][1] << " ";
-      cout << endl; 
-      for (j=0;j<n;j++) fp << setprecision(4) << setw(9) << A[i+m*j][0] << "  ";
-      fp << endl; 
-      for (j=0;j<n;j++) fp << setprecision(4) << setw(9) << A[i+m*j][1] << "  ";
-      fp << endl; 
-    }
-    fp.close();
-  }

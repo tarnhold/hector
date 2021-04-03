@@ -34,18 +34,9 @@
 //-----------------------------------------------------------------
   {
     int       i;
-    Control   *control=Control::getInstance();
 
-    //--- Remember that covariance matrix changes when first difference is
-    //    applied.
-    if (control->get_bool("firstdifference")==true) {
-      gamma_x[0] =  2.0;
-      gamma_x[1] = -1.0;
-      for (i=2;i<m;i++) gamma_x[i]=0.0;
-    } else {
-      gamma_x[0] = 1.0;
-      for (i=1;i<m;i++) gamma_x[i]=0.0;
-    }
+    gamma_x[0] = 1.0;
+    for (i=1;i<m;i++) gamma_x[i]=0.0;
   }
 
 

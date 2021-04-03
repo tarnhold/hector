@@ -10,9 +10,8 @@
   #include "GenGaussMarkov.h"
   #include <iostream>
   #include <ostream>
-  #include <gsl/gsl_sf.h>
 
-  #define TINY 1.0e-9
+  #define TINY 1.0e-12
 //  #define DEBUG
 
 //==============================================================================
@@ -20,26 +19,87 @@
 //==============================================================================
 
 
-//---!!-------------------------------
-  GenGaussMarkov::GenGaussMarkov(void)
-//---!!-------------------------------
+//---!!------------------------------------------
+  GenGaussMarkov::GenGaussMarkov(double d_fixed_)
+//---!!------------------------------------------
   {
-    Control          *control=Control::getInstance();
+    Control  *control=Control::getInstance();
 
     using namespace std;
-    Nparam = 2;
-/*
-    //--- Sanity check (Observations.cpp already checks if firstdifference
-    //    keyword exists in the first place.
-    try {
-      if (control->get_bool("firstdifference")==true) {
-        cerr << "Have not implemented first differenced Gauss-Markov!" << endl;
+    if (isnan(d_fixed_)==false) {
+      d_fixed = d_fixed_;
+      //--- If we set d fixed, then phi is automatically fixed too. The idea
+      //    is to have a small value so that the power-law does not flatten 
+      //    out too soon.
+      try {
+        phi_fixed = control->get_double("GGM_1mphi");
+      }
+      catch (exception &e) {
+        cerr << e.what() << endl;
         exit(EXIT_FAILURE);
       }
+
+      //--- With everything fixed, the number of parameters to estimate is 0
+      Nparam = 0;
+    } else {
+      try {
+        phi_fixed = control->get_double("GGM_1mphi");
+        Nparam = 1;
+      }
+      catch (exception &e) {
+        Nparam = 2;
+      }
     }
-    catch (const char* str) {
+  }
+
+
+/*! Use summation of Lopez and Temme to compute 2F1 near z=1
+ *
+ * Reference: New Series Expansions of the Gauss Hypergeometric Function
+ *
+ * Note that this only saves a factor of 2, not overly impressive. The
+ * Aitken's delta-squared process saves another factor 2.
+ */
+//-------------------------------------------------------------------------
+  double GenGaussMarkov::hyperg_2F1(double a, double b, double c, double z)
+//-------------------------------------------------------------------------
+  {
+    long double   phi0,phi1,phi2,frac1,frac2,s0,s1,s2,n,t_old,t_new;
+
+    using namespace std;
+    phi0 = 1.0;
+    phi1 = 1.0 - 2.0*b/c;
+
+    frac1 = a;
+    frac2 = z/(z-2.0);
+
+    s0 = 1.0;
+    s1 = 1.0 + frac1*frac2*phi1;
+
+    n = 2.0;
+    t_old =  9.e99;
+    t_new = -9.e99;
+    while (abs((t_new-t_old)/t_new)>TINY) {
+      t_old  = t_new;
+
+      frac1 *= (a+n-1.0)/n;
+      frac2 *= z/(z-2.0);
+
+      phi2   = (c-2.0*b)/(c+n-1.0)*phi1 + (n-1.0)/(c+n-1.0)*phi0;
+      s2    =  s1 + frac1*frac2*phi2;
+
+      //--- Apply Aitken's delta-squared process
+      t_new = s0 - (s1-s0)*(s1-s0)/(s2-2.0*s1+s0);
+
+      //--- Prepare next round
+      phi0  = phi1;
+      phi1  = phi2;
+      s0    = s1;
+      s1    = s2;
+      n    += 1.0;
     }
-*/
+
+    return t_new*pow(1.0 - z/2.0,-a);
   }
 
 
@@ -63,13 +123,20 @@
 //--------------------------------------------------------------------------
   {
     using namespace std;
-    HyperGeo     Func;
     int          i,k;
     double       scale,tau,phi,a,b,c,d,z,*_2F1=NULL,Fm1,F,Fp1;
 
     //--- extract parameters to readable variables
-    d   = param[0];
-    phi = param[1];
+    if (Nparam==0) {
+      d   = d_fixed;
+      phi = phi_fixed;
+    } else if (Nparam==1) {
+      d   = param[0];
+      phi = phi_fixed;
+    } else {
+      d   = param[0];
+      phi = param[1];
+    }
 
     //--- Allocate Memory for Hypergeometric function values
     try {
@@ -81,7 +148,7 @@
 
     //--- For phi=0, we have pure power-law noise
     if (fabs(phi*phi)<TINY) {
-      gamma_x[0] = exp(gamma(1.0-2.0*d))/pow(exp(gamma(1.0-d)),2.0);
+      gamma_x[0] = tgamma(1.0-2.0*d)/pow(tgamma(1.0-d),2.0);
                                         
       for (i=0;i<m-1;i++) {
         tau = static_cast<double>(i+1);
@@ -99,10 +166,10 @@
         b        = d;
         a        = d   + static_cast<double>(k);
         c        = 1.0 + static_cast<double>(k);
-        _2F1[m-1]= real(Func.compute(a,b,c,z));
+        _2F1[m-1]= hyperg_2F1(b,a,c,z);
         a       -= 1.0;
         c       -= 1.0;
-        _2F1[m-2]= real(Func.compute(a,b,c,z));
+        _2F1[m-2]= hyperg_2F1(b,a,c,z);
 
         Fp1   = _2F1[m-1];
         F     = _2F1[m-2];
@@ -123,7 +190,7 @@
         scale     *= (d+i)*(1.0-phi)/(i+1.0);
         if (isnan(gamma_x[i])) {
           cout << "Trouble in paradise!" << endl;
-          cout << "i=" << i << ", d=" << d << ", phi=" << phi << endl;
+          cout << "i=" << i << ", d=" << d << ", 1-phi=" << phi << endl;
           exit(EXIT_FAILURE);
         }
       }
@@ -131,7 +198,7 @@
     } 
         
 #ifdef DEBUG
-    cout << "d=" << d << ", phi=" << phi << endl;
+    cout << "d=" << d << ", 1-phi=" << phi << endl;
     for (i=0;i<m;i++) cout << "i=" << i << ", 2F1[i]=" << _2F1[i] << endl;
 #endif
 
@@ -143,53 +210,73 @@
 
 /*! Show phi and fractional difference values
  */
-//----------------------------------------------------
+//-------------------------------------------------------
   void GenGaussMarkov::show(double *param, double *error)
-//----------------------------------------------------
+//-------------------------------------------------------
   {
     using namespace std;
-    printf("d   = %8.4lf +/- %6.4lf\n",param[0],error[0]);
-    printf("phi = %8.4lf +/- %6.4lf\n",param[1],error[1]);
+    if (Nparam==0) {
+      printf("d         = %8.4lf (fixed)\n",d_fixed);
+      printf("1-phi     = %le (fixed)\n",phi_fixed);
+    } else if (Nparam==1) {
+      printf("d         = %8.4lf +/- %6.4lf\n",param[0],error[0]);
+      printf("1-phi     = %le (fixed)\n",phi_fixed);
+    } else {
+      printf("d         = %8.4lf +/- %6.4lf\n",param[0],error[0]);
+      printf("1-phi     = %8.4lf +/- %6.4lf\n",param[1],error[1]);
+    }
   }
 
 
 
 /*! Compute penalty function is parameters get out of bound
  */
-//--------------------------------------------------
+//-----------------------------------------------------
   double GenGaussMarkov::compute_penalty(double *param)
-//--------------------------------------------------
+//-----------------------------------------------------
   {
     double        penalty=0.0;
     const double  LARGE=1.0e3;
 
     using namespace std;
-    //--- phi
-    if (param[1]>0.999) {
-      penalty += (param[1]-0.999)*LARGE;
-      param[1] = 0.999;
-    } else if (param[1]<0.0) {
-      penalty += (0.0-param[1])*LARGE;
-      param[1] = 0.0;
-    }
-    //--- d (upper limit)
-    if (fabs(param[1])>0.01) {
-      if (param[0]>1.0e5) {
-        penalty += (param[0]-1.0e5)*LARGE;
-        param[0] = 1.0e5;
+    if (Nparam==0) {
+      penalty = 0.0;
+    } else if (Nparam==1) {
+      //--- d within limits, phi is fixed
+      if (param[0]>1.499) {
+        penalty += (param[0]-1.499)*LARGE;
+        param[0] = 1.499;
+      } else if (param[0]<-0.499) {
+        penalty += (-0.499-param[0])*LARGE;
+        param[0] = -0.499;
       }
     } else {
-      if (param[0]>0.499) {
-        penalty += (param[0]-0.499)*LARGE;
-        param[0] = 0.499;
+      //--- phi
+      if (param[1]>0.9999) {
+        penalty += (param[1]-0.999)*LARGE;
+        param[1] = 0.9999;
+      } else if (param[1]<0.0) {
+        penalty += (0.0-param[1])*LARGE;
+        param[1] = 0.0;
+      }
+      //--- d (upper limit)
+      if (fabs(param[1])>0.01) {
+        if (param[0]>1.0e5) {
+          penalty += (param[0]-1.0e5)*LARGE;
+          param[0] = 1.0e5;
+        }
+      } else {
+        if (param[0]>1.499) {
+          penalty += (param[0]-1.499)*LARGE;
+          param[0] = 1.499;
+        }
+      }
+      //--- d (lower limit)
+      if (param[0]<-0.499) {
+        penalty += (-0.499-param[0])*LARGE;
+        param[0] = -0.499;
       }
     }
-    //--- d (lower limit)
-    if (param[0]<-0.499) {
-      penalty += (-0.499-param[0])*LARGE;
-      param[0] = -0.499;
-    }
-    //cout << "out) d=" << param[0] << " phi=" << param[1] << endl;
     return penalty;
   }
 
@@ -197,14 +284,14 @@
 
 /*! Setup parameters for PSD computation
  */
-//---------------------------------
+//------------------------------------
   void GenGaussMarkov::setup_PSD(void)
-//---------------------------------
+//------------------------------------
   {
     using namespace std;
     cout << "Enter parameter value of d: ";
     cin >> d_fixed;
-    cout << "Enter parameter value of phi: ";
+    cout << "Enter parameter value of 1-phi: ";
     cin >> phi_fixed;
   }
 

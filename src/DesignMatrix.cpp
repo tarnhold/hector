@@ -33,36 +33,33 @@ DesignMatrix* DesignMatrix::singleton = NULL;
 //---!!------------------------------------------------
   {
     using namespace std;
-    bool            estimate_offsets;
+    bool            estimate_offsets,estimate_postseismic;
     int             i,j,k,l,year,month,day,hour,minute,Nnumbers=0;
-    double          *t,*x,second;
+    double          *t,*x,second,MJD,T;
     string          periodic_signals[20],numbers[20];
     Observations    *observations=Observations::getInstance();
     Control         *control=Control::getInstance();
     Calendar        calendar;
+    LogEntry        logdummy;
+    ExpEntry        expdummy;
 
     try {
       control->get_string("PhysicalUnit",unit);
-      first_difference = control->get_bool("firstdifference");
     }
-    catch (const char* str) {
-      cerr << str << endl;
+    catch (exception &e) {
+      cerr << e.what() << endl;
       exit(EXIT_FAILURE);
     }
     //--- determine size of matrices
-    if (first_difference==true) {
-      n = 1;
-    } else {
-      n = 2; // offset + trend
-    }
+    n = 2; // offset + trend
 
     //--- Do we need to include seasonal signal
     try {
       seasonal_signal      = control->get_bool("seasonalsignal");
       halfseasonal_signal  = control->get_bool("halfseasonalsignal");
     } 
-    catch (const char* str) {
-      cerr << str << endl;
+    catch (exception &e) {
+      cerr << e.what() << endl;
       exit(EXIT_FAILURE);
     }
     if (seasonal_signal==true)     n +=2;
@@ -74,14 +71,15 @@ DesignMatrix* DesignMatrix::singleton = NULL;
       control->get_name_list("periodicsignals",periodic_signals,
 							n_periodic_signals);
     }
-    catch (const char* str) {
+    catch (exception &e) {
       cout << "No extra periodic signal is included." << endl;
+      n_periodic_signals=0;
     }
     try {
       quadratic_term = control->get_bool("QuadraticTerm");
       if (quadratic_term==true) n++;
     }
-    catch (const char* str) {
+    catch (exception &e) {
       cout << "No quadratic term is included." << endl;
       quadratic_term = false;
     }
@@ -111,11 +109,11 @@ DesignMatrix* DesignMatrix::singleton = NULL;
     try {
       estimate_offsets = control->get_bool("estimateoffsets");
     }
-    catch (const char* str) {
-      cerr << str << endl;
+    catch (exception &e) {
+      cerr << e.what() << endl;
       exit(EXIT_FAILURE);
     }
-    if (first_difference==false && estimate_offsets==true) {
+    if (estimate_offsets==true) {
       observations->get_offsets(offsets);
       n_offsets  = offsets.size();
       n         += n_offsets;
@@ -123,9 +121,29 @@ DesignMatrix* DesignMatrix::singleton = NULL;
       n_offsets  = 0;
     }
 
+    //--- Check also for postseicmic relaxation modelling
+    try {
+      estimate_postseismic = control->get_bool("estimatepostseismic");
+    }
+    catch (exception &e) {
+      estimate_postseismic=false;
+    }
+    if (estimate_postseismic==true) {
+      observations->get_postseismiclog(postseismiclog);
+      n_postseismiclog  = postseismiclog.size();
+      n                += n_postseismiclog;
+      observations->get_postseismicexp(postseismicexp);
+      n_postseismicexp  = postseismicexp.size();
+      n                += n_postseismicexp;
+    } else {
+      n_postseismiclog = 0;
+      n_postseismicexp = 0;
+    }
+
     //--- Allocate memory
     try {
       H = new double[m*n];
+      memset(H,0,(m*n)*sizeof(double));
       if (Ngaps>0)  F = new double[Ngaps*m];
       else          F = NULL;
     }
@@ -138,9 +156,9 @@ DesignMatrix* DesignMatrix::singleton = NULL;
     try {
       control->get_name_list("ReferenceEpoch",numbers,Nnumbers);
     } 
-    catch (const char * str) {
+    catch (exception &e) {
 #ifdef DEBUG
-      cerr << str << endl;
+      cerr << e.what() << endl;
 #endif
     }
     if (Nnumbers==0) { // No ReferenceEpoch found, use middle of time-series
@@ -162,52 +180,40 @@ DesignMatrix* DesignMatrix::singleton = NULL;
     //--- Construct the design matrix H
     for (i=0;i<m;i++) {
       j = 1;
-      if (first_difference==false) {
-        H[i] = 1.0;
-        H[i+j*m] = t[i]-th;                                     j++;
-        if (quadratic_term==true) {
-          H[i+j*m] = 0.5*pow(t[i]-th,2.0);                      j++;
-        }
-        if (seasonal_signal==true) {
-          H[i+j*m] = cos(tpi*(t[i]-51544.0)/365.25);            j++;
-          H[i+j*m] = sin(tpi*(t[i]-51544.0)/365.25);            j++;
-        }
-        if (halfseasonal_signal==true) {
-          H[i+j*m] = cos(2.0*tpi*(t[i]-51544.0)/365.25);        j++;
-          H[i+j*m] = sin(2.0*tpi*(t[i]-51544.0)/365.25);        j++;
-        }
-        for (k=0;k<n_periodic_signals;k++) {
-          H[i+j*m] = cos(tpi*(t[i]-51544.0)/periods[k]);        j++;
-          H[i+j*m] = sin(tpi*(t[i]-51544.0)/periods[k]);        j++;
-        }
-        for (l=0;l<n_offsets;l++) {
-          for (k=0;k<m;k++) {
-            if (t[k]+TINY>offsets[l]) H[k + (j+l)*m] = 1.0;
-          }
-        }
-        j += n_offsets;
-      } else {
-        //--- Now treat the first differenced data case
-        H[i] = dt;
-        if (seasonal_signal==true) {
-          H[i+j*m] = cos(tpi*(t[i]-51544.0)/365.25) -
-                          cos(tpi*((t[i]-dt)-51544.0)/365.25);  j++;
-          H[i+j*m] = sin(tpi*(t[i]-51544.0)/365.25) -
-                          sin(tpi*((t[i]-dt)-51544.0)/365.25);  j++;
-        }
-        if (halfseasonal_signal==true) {
-          H[i+j*m] = cos(2.0*tpi*(t[i]-51544.0)/365.25) -
-                          cos(2.0*tpi*((t[i]-dt)-51544.0)/365.25);  j++;
-          H[i+j*m] = sin(2.0*tpi*(t[i]-51544.0)/365.25) -
-                          sin(2.0*tpi*((t[i]-dt)-51544.0)/365.25);  j++;
-        }
-        for (k=0;k<n_periodic_signals;k++) {
-          H[i+j*m] = cos(tpi*(t[i]-51544.0)/periods[k]) -
-			  cos(tpi*((t[i]-dt)-51544.0)/periods[k]);  j++;
-          H[i+j*m] = sin(tpi*(t[i]-51544.0)/periods[k]) -
-			  sin(tpi*((t[i]-dt)-51544.0)/periods[k]);  j++;
-        }
+      H[i] = 1.0;
+      H[i+j*m] = t[i]-th;                                     j++;
+      if (quadratic_term==true) {
+        H[i+j*m] = 0.5*pow(t[i]-th,2.0);                      j++;
       }
+      if (seasonal_signal==true) {
+        H[i+j*m] = cos(tpi*(t[i]-51544.0)/365.25);            j++;
+        H[i+j*m] = sin(tpi*(t[i]-51544.0)/365.25);            j++;
+      }
+      if (halfseasonal_signal==true) {
+        H[i+j*m] = cos(2.0*tpi*(t[i]-51544.0)/365.25);        j++;
+        H[i+j*m] = sin(2.0*tpi*(t[i]-51544.0)/365.25);        j++;
+      }
+      for (k=0;k<n_periodic_signals;k++) {
+        H[i+j*m] = cos(tpi*(t[i]-51544.0)/periods[k]);        j++;
+        H[i+j*m] = sin(tpi*(t[i]-51544.0)/periods[k]);        j++;
+      }
+      for (l=0;l<n_offsets;l++) {
+        if (t[i]+TINY>offsets[l]) H[i + (j+l)*m] = 1.0;
+        else                      H[i + (j+l)*m] = 0.0;
+      }
+      j += n_offsets;
+      for (l=0;l<n_postseismiclog;l++) {
+        MJD = postseismiclog[l].MJD;
+        T   = postseismiclog[l].T;
+        if (t[i]+TINY>MJD) H[i + (j+l)*m] = log(1.0 + (t[i]-MJD)/T);
+      }
+      j += n_postseismiclog;
+      for (l=0;l<n_postseismicexp;l++) {
+        MJD = postseismicexp[l].MJD;
+        T   = postseismicexp[l].T;
+        if (t[i]+TINY>MJD) H[i + (j+l)*m] = 1.0 - exp(-(t[i]-MJD)/T);
+      }
+      j += n_postseismicexp;
     }
 
     //--- Construct selection matrix F
@@ -295,20 +301,14 @@ DesignMatrix* DesignMatrix::singleton = NULL;
 
     using namespace std;
     i=0;
-    cout << fixed << setprecision(6);
-    if (first_difference==false) {
-      calendar.compute_date(th,year,month,day,hour,minute,second);
-      cout << "bias : " << theta[0] << " +/- " << error[0] << " " << unit 
-           << " (at " << year << "/" << month << "/" << day << ", " 
-           << hour << ":" << minute << ":" << second << ")" << endl;
-      cout << "trend: " << theta[1]*ds << " +/- " << error[1]*ds
-           << " " << unit << "/year" << endl;
-      i += 2;
-    } else {
-      cout << "trend: " << theta[0]*ds << " +/- " << error[0]*ds
-           << " " << unit << "/year" << endl;
-      i += 1;
-    }
+    cout << fixed << setprecision(3);
+    calendar.compute_date(th,year,month,day,hour,minute,second);
+    cout << "bias : " << theta[0] << " +/- " << error[0] << " " << unit 
+         << " (at " << year << "/" << month << "/" << day << ", " 
+         << hour << ":" << minute << ":" << second << ")" << endl;
+    cout << "trend: " << theta[1]*ds << " +/- " << error[1]*ds
+         << " " << unit << "/year" << endl;
+    i += 2;
 
     if (quadratic_term==true) {
       cout << "quadratic: " << theta[i]*ds*ds << " +/- " << error[i]*ds*ds
@@ -336,8 +336,18 @@ DesignMatrix* DesignMatrix::singleton = NULL;
 						error[i],unit.c_str()); i++;
     }
     for (j=0;j<n_offsets;j++) {
-      printf("offset at %10.4lf : %lf +/- %lf %s\n",offsets[j],
+      printf("offset at %10.4lf : %7.2lf +/- %5.2lf %s\n",offsets[j],
 				       theta[i],error[i],unit.c_str()); i++;
+    }
+    for (j=0;j<n_postseismiclog;j++) {
+      printf("log relaxation at %10.4lf (T=%6.0lf) : %7.2lf +/- %5.2lf %s\n",
+		postseismiclog[j].MJD, postseismiclog[j].T,
+					theta[i],error[i],unit.c_str()); i++;
+    }
+    for (j=0;j<n_postseismicexp;j++) {
+      printf("exp relaxation at %10.4lf (T=%6.0lf) : %7.2lf +/- %5.2lf %s\n",
+		postseismicexp[j].MJD, postseismicexp[j].T,
+					theta[i],error[i],unit.c_str()); i++;
     }
   }
 

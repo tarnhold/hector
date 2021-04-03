@@ -13,6 +13,7 @@
   #include <iostream>
   #include <ostream>
   #include <string>
+  #include <exception>
   #include "Control.h"
 
 //============================================================================
@@ -55,7 +56,7 @@
 //-------------------------------------------------
   {
     using namespace std;
-    string       str,dummy,error_message;
+    string       str,dummy;
 
     fs.clear();
     fs.seekg (0,fs.beg); // start at beginning of Control file
@@ -70,8 +71,7 @@
       }
     } while (fs.eof()!=true);
     fs.clear();
-    error_message = "Could not find label:" + label;
-    throw(const_cast<const char *>(error_message.c_str()));
+    throw(runtime_error("Could not find label: " + label));
   }
 
 
@@ -90,17 +90,10 @@
   {
     using namespace std;
     string        str,line;
-    string        whitespaces (" \t");
-    size_t        found;
     stringstream  fs_line;
 
     find_label(label); // point file pointer to the right location
     getline(fs,line);  // read the whole line into string 'line'
-
-    //--- Trim trailing spaces
-    found = line.find_last_not_of(whitespaces);
-    if (found!=string::npos) line.erase(found+1);
-
     fs_line << line;   // copy line into the string-stream
     n=0;
     while (fs_line.good()==true && fs_line.eof()!=true) {

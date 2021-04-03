@@ -97,6 +97,10 @@
       //--- no Minimizer required, simple OLS
       cout << "performing Ordinary Least-Squares" << endl;
       likelihood->compute_LeastSquares(param,lndeterminant,sigma_eta);
+      likelihood->set_sigma_eta(sigma_eta);
+      //--- Even if no noise parameters are estimated, it is good to show
+      //    which noise model was chosen and what its amplitude is
+      noisemodel->show(param,error);
       show_BIC();
       cout << endl;
     } else {    
@@ -148,7 +152,7 @@
       }
  
       //--- save minimum
-      for (i=0;i<Nparam;i++) param[i] = gsl_vector_get(s->x,i);
+      for (i=0;i<Nparam;i++)   param[i] = gsl_vector_get(s->x,i);
   
       gsl_vector_free(x);
       gsl_vector_free(ss);
@@ -246,10 +250,7 @@
     //--- Create array to hold parameters
     X = new double[Nparam];
 
-    //--- Compute log(likelihood) at minimum
     lnL_min = likelihood->compute(param);
-    show_BIC();
-
     for (i=0;i<Nparam;i++) {
       for (j=i;j<Nparam;j++) {
         //--- diagonal terms
@@ -324,6 +325,14 @@
     for (i=0;i<Nparam;i++) {
       error[i] = sqrt(C[i*Nparam + i]);
     }
+
+    //--- The way I modify the 'param' variable to compute the Fisher 
+    //    information matrix in compute_inv_Fisher is dangerous because I rely
+    //    on the fact that the last call to likelihood->compute was done
+    //    with the optimal values for 'param' but anyway. Now I call 
+    //    likelihood->compute(param) last so that the other classes copy 
+    //    the optimal value of the estimated parameters into their instances.
+    show_BIC();
 
     //--- free memory
     if (C!=NULL) delete[] C;

@@ -28,6 +28,7 @@
   #include <cmath>
   #include <vector>
   #include <cstring>
+  #include <string>
   #include <cstdlib>
   #include <cstdlib>
   #include <fftw3.h>
@@ -48,7 +49,7 @@
 //==============================================================================
 
 
-/*! compute window function [-M..M]
+/*! apply Parzen window function [-M..M]
  * fraction is how much of the data is used in the window function. Buttus
  * says 10% is normal. Thus Parzen filter applies [-M,-0.9M] and [0.9M,M]
  * with 1 in between and zeros outside.
@@ -59,9 +60,9 @@
  *                       the data. Only 1-fraction gets altered.
  * \returns{value of window function}
  */
-//----------------------------------------------------
-  double windowfunction(int i, int M, double fraction)
-//----------------------------------------------------
+//--------------------------------------------
+  double Parzen(int i, int M, double fraction)
+//--------------------------------------------
   {
     int             m;
     double          w;
@@ -73,15 +74,58 @@
     if (i<M-m) { // untouced by filter
       return 1.0;
     } else { // filter applies
-      s = static_cast<double>(i-(M-m))/static_cast<double>(m);
+      if (m>0) {
+        //--- i ranges from M-m to M
+        s = static_cast<double>(i-(M-m))/static_cast<double>(m);
+      } else {
+        s = 0;
+      }
     }
-    // Parzen filter
     if (i<M/2) {
       w = 1.0 - 6.0*s*s + 6.0*s*s*s;
     } else {
       s = 1.0 - s;  // function is: 2.0*(1-s)^3
       w = 2.0*s*s*s;
     }
+    return w;
+  }
+
+
+
+/*! apply Hann window function [-M..M]
+ * fraction is how much of the data is used in the window function. Buttus
+ * says 10% is normal. Thus Parzen filter applies [-M,-0.9M] and [0.9M,M]
+ * with 1 in between and zeros outside.
+ *
+ * \param[in] i          index between 0 and M (location)
+ * \param[in] M          half-width of window (-M:M)
+ * \param[in] fraction   the fraction inside the window which does not alter
+ *                       the data. Only 1-fraction gets altered.
+ * \returns{value of window function}
+ */
+//------------------------------------------
+  double Hann(int i, int M, double fraction)
+//------------------------------------------
+  {
+    int             m;
+    double          w;
+    static double   pi = atan(1.0)*4.0,s;
+
+    if (i>=M) return 0.0; // outside range always zero
+    if (i<0) i = -i;      // only symmetric window functions treated here
+    m = static_cast<int>(fraction*static_cast<double>(M));
+    if (i<M-m) { // untouced by filter
+      return 1.0;
+    } else { // filter applies
+      if (m>0) {
+        //--- i ranges from M-m to M
+        s = static_cast<double>(i-(M-m))/static_cast<double>(m);
+      } else {
+        s = 0;
+      }
+    }
+    w = 0.5*(1.0 + cos(pi*s));
+    
     return w;
   }
 
@@ -113,7 +157,7 @@
  
 
  
-/*!Compute the spectrum using Welch averaging process and Parzen window
+/*!Compute the spectrum using Welch averaging process and a window
  * function.
  *
  * \param[out] N        number of frequencies
@@ -134,8 +178,45 @@
     char            line[80];
     fstream         fp;
     FILE            *fp_res;
+    string          name;
     fftw_plan       plan_forward;
     fftw_complex    *Y=NULL;
+    double         (*windowfunction)(int, int, double);
+    Control        *control=Control::getInstance();
+
+    //--- Which window function needs to be applied?
+    try {
+      control->get_string("WindowFunction",name);
+      if (name.compare("Parzen")==0) {
+        windowfunction = Parzen; 
+      } else if (name.compare("Hann")==0) {
+        windowfunction = Hann;
+      } else {
+        cerr << "Unknown WindowFunction: " << name << endl;
+        exit(EXIT_FAILURE);
+      }
+      cout << "window function : " << name << endl;
+    }
+    catch (exception &e) {
+      cout << e.what() << endl;
+      cout << "Parzen window function is used." << endl;
+      windowfunction = Parzen; 
+    }
+    
+    //--- Fraction which determines how much the window function is applied    
+    try {
+      fraction = control->get_double("Fraction");
+      if (fraction<0.0 || fraction>1.0) {
+        cerr << "fraction must lie between 0 and 1, not:" << fraction << endl;
+        exit(EXIT_FAILURE);
+      }
+      cout << "window function fraction: " << fraction << endl;
+    }
+    catch (exception &e) {
+      cout << e.what() << endl;
+      cout << "A fraction of 0.1 is used." << endl;
+      fraction = 0.1; // first and last 10% is put through the window function
+    }
 
     //--- Read data from file. Note that the Observation class fills the
     //    missing data with NaN's.
@@ -153,7 +234,6 @@
     dummy = new double[L]; // Its segment is put through window filter and put
                            // into the 'dummy' array and afterwards FFT-ed.
 
-    fraction = 0.9; // first and last 10% is put through the window function
     cout << "Number of data points n : " << N << endl;
     cout << "Number of data used   N : " << N << endl;
     cout << "Number of segments    K : " << K << endl;
@@ -173,10 +253,14 @@
     //--- Compute how much the window function alters the scale
     U = 0.0; 
     for (i=0;i<L;i++) {
-      U += pow(windowfunction(i-L/2,L/2,fraction),2.0);
+      U += pow((*windowfunction)(i-L/2,L/2,fraction),2.0);
     }
     U /= static_cast<double>(L); // follow equation 9.96
     scale = dt/(U*static_cast<double>(L));
+    cout << "U : " << U << endl;
+    cout << "dt: " << dt << endl;
+    cout << "scale for G to get Amplitude (mm): " << 
+ 					1000.0 * sqrt(2.0/(L*dt)) << endl;
 
     //--- Remove Mean to improve results at low frequencies
     remove_mean(y,N);
@@ -210,7 +294,7 @@
           dummy[i] = 0.0;
           k++;
         } else {
-          dummy[i] = y[j*L/2+i]*windowfunction(i-L/2,L/2,fraction);
+          dummy[i] = y[j*L/2+i]* (*windowfunction)(i-L/2,L/2,fraction);
         }
       }
 
@@ -296,7 +380,7 @@
 
 
 
-/*!Make a file that contains the Welch periodogram for the given station name
+/*! Make a file that contains the Welch periodogram for the given station name
  *
  * \param[in] segments : number of divisions of the time-series, without
  *                       counting the overlaps (50%).
