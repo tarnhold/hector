@@ -27,12 +27,14 @@
         static NoiseModel    *singleton;
         int                  Nparam,Nmodels,*NparamIndv;
         double               *phi,*fraction_fixed,*h,*w,sigma_fixed;
-        char                 **noisemodel;
+        std::string          noisemodel[15];
         NoiseModelBaseClass  **modelIndv;
         fftw_complex         *F_h,*F_w;
         fftw_plan            plan_backward,plan_forward;
         const gsl_rng_type   *T_random;
         gsl_rng              *r_random;
+
+        double  compute_fraction(int i, double *param);
 
       public:
         static NoiseModel*   getInstance(void);

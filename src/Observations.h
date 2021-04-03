@@ -23,19 +23,20 @@
         int                 Ngaps;
         double              fs,scale_factor;
         bool                PSMSL_monthly,interpolate_data,first_difference;
-        void                (Observations::*read_observations)(char filename[]);
+        void                (Observations::*read_observations)(std::string 
+								     filename);
         std::vector<double> t,x,xhat,offsets;
-        char                name[80],extension[20];
+        std::string 	    extension;
  
         void   read_header(std::fstream& fp, int component);
         void   read_external_header(std::fstream& fp);
         void   clean_offsets(void);
         void   write_header(std::fstream& fp);
-        void   read_PSMSL_monthly(char filename[]);
-        void   read_mom(char filename[]);
-        void   read_enu(char filename[]);
-        void   read_neu(char filename[]);
-        void   read_pos(char filename[]);
+        void   read_PSMSL_monthly(std::string filename);
+        void   read_mom(std::string filename);
+        void   read_enu(std::string filename);
+        void   read_neu(std::string filename);
+        void   read_pos(std::string filename);
         void   determine_fs(void);
 
       public:
@@ -43,7 +44,6 @@
         static Observations* getInstance(void);
         void   save_mom(bool header=false);
         void   get_values(int& m, double **t_, double **x_);
-        void   get_name(char name_[]) {strcpy(name_,name);};
         double get_fs(void) {return fs;};
         double estimate_lag1(void);
         void   make_continuous(bool interpolate);

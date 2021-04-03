@@ -6,7 +6,7 @@
 
 include ../Makefile.inc
 
-VERSION=1.1
+VERSION=1.2
 
 #--- Directory where programs will be installed
 BINDIR=$(PREFIX)/bin
@@ -25,7 +25,7 @@ programs = estimatetrend modelspectrum estimatespectrum removeoutliers \
 all : $(programs)
 
 clean:
-	rm -f *.o 
+	rm -f *.o $(programs)
 
 install:
 	mkdir -p $(BINDIR)
@@ -37,10 +37,11 @@ uninstall :
 
 estimatetrend : EstimateTrend.cpp Control.o Minimizer.o \
 	$(noisemodel_objects) $(likelihood_objects) Observations.o \
-	DesignMatrix.o HyperGeo.o Calendar.o
+	DesignMatrix.o HyperGeo.o Calendar.o Statistics.o
 	$(CPP) $(CPPFLAGS) EstimateTrend.cpp Control.o Minimizer.o \
 	$(noisemodel_objects) $(likelihood_objects) Observations.o \
-	DesignMatrix.o HyperGeo.o Calendar.o -DVERSION=$(VERSION) \
+	DesignMatrix.o HyperGeo.o Calendar.o Statistics.o \
+	 -DVERSION=$(VERSION) \
 	$(INCLUDE_DIRS) -latlas -lcblas -llapack_atlas -lfftw3 -lgsl \
 	-o estimatetrend
 
@@ -166,3 +167,6 @@ HyperGeo.o : HyperGeo.cpp HyperGeo.h
 
 Calendar.o : Calendar.cpp Calendar.h
 	$(CPP) $(CPPFLAGS) -c Calendar.cpp
+
+Statistics.o : Statistics.cpp Statistics.h
+	$(CPP) $(CPPFLAGS) -c Statistics.cpp

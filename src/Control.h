@@ -16,6 +16,8 @@
   #define __CONTROL
   #include <cstdio>
   #include <string>
+  #include <fstream>
+  #include <sstream>
 
   /*! Following the Namelist tradition of FORTRAN, this class lets you define
    *  parameter values in a ASCII file which is read at run-time. 
@@ -23,9 +25,9 @@
   class Control 
   {
     private:
-      FILE     *fp_in;
-      char     ctl_file[100];
-      void     find_label(const char label[]);
+      std::fstream  fs;
+      std::string   ctl_file;
+      void     find_label(const std::string label);
       void     open_file(void);
       void     close_file(void);
 
@@ -33,11 +35,12 @@
       static Control* getInstance(std::string filename = "estimatetrend.ctl");
       Control(std::string file);
       ~Control(void);
-      void     get_name_list(const char label[], char **value, int& n);
-      void     get_string(const char label[], char value[]);
-      bool     get_bool(const char label[]);
-      int      get_int(const char label[]);
-      double   get_double(const char label[]);
+      void     get_name_list(const std::string label, std::string *value, 
+									int& n);
+      void     get_string(const std::string label, std::string& value);
+      bool     get_bool(const std::string label);
+      int      get_int(const std::string label);
+      double   get_double(const std::string label);
   };
 
 #endif

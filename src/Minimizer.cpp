@@ -97,6 +97,8 @@
       //--- no Minimizer required, simple OLS
       cout << "performing Ordinary Least-Squares" << endl;
       likelihood->compute_LeastSquares(param,lndeterminant,sigma_eta);
+      show_BIC();
+      cout << endl;
     } else {    
       //--- Find minimum using Nelder-Mead Simplex method ---------
 
@@ -132,7 +134,7 @@
           printf ("converged to minimum at\n");
         }
      
-        printf ("%5ld",iter);
+        printf ("%5zd",iter);
         for (i=0;i<Nparam;i++) {
           printf("%11.5f ",gsl_vector_get(s->x,i));
         }
@@ -201,24 +203,18 @@
 
 
 
-/*! Simply compute curvature
+/* Show L_min, BIC and AIC
  */
-//---------------------------------------------
-  void Minimizer::compute_inv_Fisher(double *C)
-//---------------------------------------------
+//------------------------------
+  void Minimizer::show_BIC(void)
+//------------------------------
   {
-    int           i,j,m,info,k;
-    char          Up='L';
-    const double  ds=1.0e-3,TINY=1.0e-6;
-    double        lnL_min,lnL[4],*X=NULL;
+    int           m;
+    double        lnL_min;
     Likelihood    *likelihood   = Likelihood::getInstance();
-    NoiseModel    *noisemodel   = NoiseModel::getInstance();
     Observations  *observations = Observations::getInstance();
-
-    using namespace std;
-    //--- Create array to hold parameters
-    X = new double[Nparam];
-
+   
+    using namespace std; 
     //--- Compute log(likelihood) at minimum
     lnL_min = likelihood->compute(param);
     cout << endl << "Likelihood value" << endl << "--------------------"
@@ -229,6 +225,30 @@
     cout << "min log(L)=" << -lnL_min << endl;
     cout << "AIC       =" << 2.0*(Nparam + lnL_min) << endl;
     cout << "BIC       =" << Nparam*log(m) + 2.0*lnL_min << endl;
+  }
+
+
+
+/*! Simply compute curvature
+ */
+//---------------------------------------------
+  void Minimizer::compute_inv_Fisher(double *C)
+//---------------------------------------------
+  {
+    int           i,j,info,k;
+    char          Up='L';
+    const double  ds=1.0e-3,TINY=1.0e-6;
+    double        lnL_min,lnL[4],*X=NULL;
+    Likelihood    *likelihood   = Likelihood::getInstance();
+    NoiseModel    *noisemodel   = NoiseModel::getInstance();
+
+    using namespace std;
+    //--- Create array to hold parameters
+    X = new double[Nparam];
+
+    //--- Compute log(likelihood) at minimum
+    lnL_min = likelihood->compute(param);
+    show_BIC();
 
     for (i=0;i<Nparam;i++) {
       for (j=i;j<Nparam;j++) {

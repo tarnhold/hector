@@ -45,8 +45,7 @@ Observations* Observations::singleton = NULL;
 //---!!-------------------------------------------
   {
     using namespace std;
-    string    fn;
-    char      datafile[40],filename[120],directory[80];
+    string    datafile,filename,directory;
     int       i,n,choice;
     Control   *control = Control::getInstance();
 
@@ -57,6 +56,9 @@ Observations* Observations::singleton = NULL;
     try {
       control->get_string("DataFile",datafile);
       control->get_string("DataDirectory",directory);
+      if (directory.at(directory.length()-1)!='/') {
+        directory += "/";
+      }
     } catch (const char* str) {
       cerr << str << endl;
       exit(EXIT_FAILURE);
@@ -69,32 +71,31 @@ Observations* Observations::singleton = NULL;
       scale_factor = 1.0;
     }
 
-    strcpy(filename,directory);
-    n = strlen(filename);
-    if (filename[n-1]!='/') strcat(filename,"/");
-    strcat(filename,datafile);
-    fn = filename;
-    i  = fn.find_last_of(".");
-    strncpy(name,filename,i);
-    strcpy(extension,&filename[i+1]);
-    if (strcmp(extension,"mom")==0) {
+    //--- construct filename
+    filename = directory + datafile;
+    
+    //--- Try to guess the filename extension and split
+    i  = filename.find_last_of(".");
+    extension = filename.substr(i+1,filename.length()-i-1);
+    
+    if (extension.compare("mom")==0) {
       cout << "Data format: MJD, Observations, Model" << endl;
       read_observations = &Observations::read_mom;
-    } else if (strcmp(extension,"enu")==0) {
+    } else if (extension.compare("enu")==0) {
       cout << "Data format: MJD, East, North & Up" << endl;
       read_observations = &Observations::read_enu;
-    } else if (strcmp(extension,"neu")==0) {
+    } else if (extension.compare("neu")==0) {
       cout << "Data format: year fraction, North, East & Up" << endl;
       read_observations = &Observations::read_neu;
-    } else if (strcmp(extension,"pos")==0) {
+    } else if (extension.compare("pos")==0) {
       cout << "Plate Boundary Observatory data format" << endl;
       read_observations = &Observations::read_pos;
-    } else if (strcmp(extension,"rlrdata")==0) {
+    } else if (extension.compare("rlrdata")==0) {
       cout << "Data format: monthly PSMSL data" << endl;
       read_observations = &Observations::read_PSMSL_monthly;
     } else {
       cerr << "Cannot understand which type is : " << filename << endl;
-      cout << "name=" << name << ", extension=" << extension << endl;
+      cout << "extension=" << extension << endl;
       exit(EXIT_FAILURE);
     }
 
@@ -203,12 +204,12 @@ Observations* Observations::singleton = NULL;
   {
     using namespace std;
     int            component,day,month,year;
-    char           line[80],component_name[40];
+    char           line[80];
     double         MJD,comp[3];
+    string         component_name;
     Calendar       calendar;
     Control        *control=Control::getInstance();
 
-    using namespace std;
     //--- We need to know which component is requested.
     try {
       control->get_string("component",component_name);
@@ -216,9 +217,9 @@ Observations* Observations::singleton = NULL;
       cerr << str << endl;
       exit(EXIT_FAILURE);
     }
-    if      (strcmp(component_name,"East")==0)  component=0;
-    else if (strcmp(component_name,"North")==0) component=1;
-    else if (strcmp(component_name,"Up")==0)    component=2;
+    if      (component_name.compare("East")==0)  component=0;
+    else if (component_name.compare("North")==0) component=1;
+    else if (component_name.compare("Up")==0)    component=2;
     else {
       cerr << "Unknown component name: " << component_name << endl;
       exit(EXIT_FAILURE);
@@ -331,24 +332,24 @@ Observations* Observations::singleton = NULL;
 
 
 
-//------------------------------------------------------
-  void Observations::read_PSMSL_monthly(char filename[])
-//------------------------------------------------------
+//-----------------------------------------------------------
+  void Observations::read_PSMSL_monthly(std::string filename)
+//-----------------------------------------------------------
   {
     using namespace std;
     fstream   fp;
     string    fn(filename);
     double    fraction,MJD;
     int       MSL,flag,year,yearly,missing;
-    char      line[80],complete_filename[120],fileout[120];
+    char      line[80];
     long int  J;
     Calendar  calendar;
 
     //--- Open file
     fs = 1.0/(30.4375*24.0*3600.0); // sampling frequency (Hz)
-    fp.open(filename,ios::in);
+    fp.open(filename.c_str(),ios::in);
     if (!fp.is_open()) {
-      cerr << "Could not open " << complete_filename << endl;
+      cerr << "Could not open " << filename << endl;
       exit(EXIT_FAILURE);
     }
 
@@ -384,18 +385,19 @@ Observations* Observations::singleton = NULL;
 
 
 
-//--------------------------------------------
-  void Observations::read_mom(char filename[])
-//--------------------------------------------
+//-------------------------------------------------
+  void Observations::read_mom(std::string filename)
+//-------------------------------------------------
   {
     using namespace std;
     fstream    fp,fp_offset;
-    char       line[80],offset_filename[80];
+    string     offset_filename;
+    char       line[80];
     double     MJD,obs,mod;
     Control    *control=Control::getInstance();
 
     //--- Open file
-    fp.open(filename,ios::in);
+    fp.open(filename.c_str(),ios::in);
     if (!fp.is_open()) {
       cerr << "Could not open " << filename << endl;
       exit(EXIT_FAILURE);
@@ -404,7 +406,7 @@ Observations* Observations::singleton = NULL;
     //--- Read header information if it exists
     try {
       control->get_string("OffsetFile",offset_filename);
-      fp_offset.open(offset_filename,ios::in);
+      fp_offset.open(offset_filename.c_str(),ios::in);
       if (!fp_offset.is_open()) {
         cerr << "Could not open " << offset_filename << endl;
         exit(EXIT_FAILURE);
@@ -479,6 +481,7 @@ Observations* Observations::singleton = NULL;
         else if (fabs(24.0*dt-1.0)<1.0e-3)   fs = 1.0/(3600.0);
         else if (fabs(dt-1.0)<1.0e-3)        fs = 1.0/(24.0*3600.0);
         else if (fabs(dt-7.0)<1.0e-3)        fs = 1.0/(7.0*24.0*3600.0);
+        else if (fabs(dt-30.4375)<1.0e-3)    fs = 1.0/(30.4375*24.0*3600.0);
         i++;
       }
       if (fs<1.0e-8) {
@@ -495,15 +498,16 @@ Observations* Observations::singleton = NULL;
 
 /*! Read my own brew GPS data format containing MJD, East, North and Up
  */
-//--------------------------------------------
-  void Observations::read_enu(char filename[])
-//--------------------------------------------
+//-------------------------------------------------
+  void Observations::read_enu(std::string filename)
+//-------------------------------------------------
   {
     using namespace std;
     fstream       fp,fp_offset;
     const double  TINY=1.0e-4;
     bool          first_line=true;
-    char          line[80],component_name[20],offset_filename[80];
+    string        component_name,offset_filename;
+    char          line[80];
     int           component;
     double        MJD,obs[3],MJD_old;
     Control       *control = Control::getInstance();
@@ -515,16 +519,16 @@ Observations* Observations::singleton = NULL;
       cerr << str << endl;
       exit(EXIT_FAILURE);
     }
-    if      (strcmp(component_name,"East")==0)  component=0;
-    else if (strcmp(component_name,"North")==0) component=1;
-    else if (strcmp(component_name,"Up")==0)    component=2;
+    if      (component_name.compare("East")==0)  component=0;
+    else if (component_name.compare("North")==0) component=1;
+    else if (component_name.compare("Up")==0)    component=2;
     else {
       cerr << "Unknown component name: " << component_name << endl;
       exit(EXIT_FAILURE);
     }
 
     //--- Open file
-    fp.open(filename,ios::in);
+    fp.open(filename.c_str(),ios::in);
     if (!fp.is_open()) {
       cerr << "Could not open " << filename << endl;
       exit(EXIT_FAILURE);
@@ -533,7 +537,7 @@ Observations* Observations::singleton = NULL;
     //--- Read header information if it exists
     try {
       control->get_string("OffsetFile",offset_filename);
-      fp_offset.open(offset_filename,ios::in);
+      fp_offset.open(offset_filename.c_str(),ios::in);
       if (!fp_offset.is_open()) {
         cerr << "Could not open " << offset_filename << endl;
         exit(EXIT_FAILURE);
@@ -579,15 +583,16 @@ Observations* Observations::singleton = NULL;
 
 /* JPL, Simon and Guy Woppelman prefer North,East Up...
  */
-//--------------------------------------------
-  void Observations::read_neu(char filename[])
-//--------------------------------------------
+//-------------------------------------------------
+  void Observations::read_neu(std::string filename)
+//-------------------------------------------------
   {
     using namespace std;
     fstream       fp;
     const double  TINY=1.0e-4;
     bool          first_line=true,found_fs=false;
-    char          line[120],component_name[20];
+    char          line[120];
+    string        component_name;
     int           decimal,remainder,component,i;
     double        MJD,obs[3],MJD_old,yearfraction,dt;
     Control       *control = Control::getInstance();
@@ -599,16 +604,16 @@ Observations* Observations::singleton = NULL;
       cerr << str << endl;
       exit(EXIT_FAILURE);
     }
-    if      (strcmp(component_name,"East")==0)  component=1;
-    else if (strcmp(component_name,"North")==0) component=0;
-    else if (strcmp(component_name,"Up")==0)    component=2;
+    if      (component_name.compare("East")==0)  component=1;
+    else if (component_name.compare("North")==0) component=0;
+    else if (component_name.compare("Up")==0)    component=2;
     else {
       cerr << "Unknown component name: " << component_name << endl;
       exit(EXIT_FAILURE);
     }
 
     //--- Open file
-    fp.open(filename,ios::in);
+    fp.open(filename.c_str(),ios::in);
     if (!fp.is_open()) {
       cerr << "Could not open " << filename << endl;
       exit(EXIT_FAILURE);
@@ -683,14 +688,15 @@ Observations* Observations::singleton = NULL;
 
 /*! Read the Plate Boundary Observatory time-series format.
  */
-//--------------------------------------------
-  void Observations::read_pos(char filename[])
-//--------------------------------------------
+//-------------------------------------------------
+  void Observations::read_pos(std::string filename)
+//-------------------------------------------------
   {
     using namespace std;
     bool          estimateoffsets;
     fstream       fp,fp_offset;
-    char          line[300],component_name[20],offset_filename[80];
+    char          line[300];
+    string        component_name,offset_filename;
     int           i,component;
     double        MJD,obs[6];
     Control       *control = Control::getInstance();
@@ -702,12 +708,12 @@ Observations* Observations::singleton = NULL;
       cerr << str << endl;
       exit(EXIT_FAILURE);
     }
-    if      (strcmp(component_name,"X")==0)     component=0;
-    else if (strcmp(component_name,"Y")==0)     component=1;
-    else if (strcmp(component_name,"Z")==0)     component=2;
-    else if (strcmp(component_name,"North")==0) component=3;
-    else if (strcmp(component_name,"East")==0)  component=4;
-    else if (strcmp(component_name,"Up")==0)    component=5;
+    if      (component_name.compare("X")==0)     component=0;
+    else if (component_name.compare("Y")==0)     component=1;
+    else if (component_name.compare("Z")==0)     component=2;
+    else if (component_name.compare("North")==0) component=3;
+    else if (component_name.compare("East")==0)  component=4;
+    else if (component_name.compare("Up")==0)    component=5;
     else {
       cerr << "Unknown component name: " << component_name << endl;
       exit(EXIT_FAILURE);
@@ -724,7 +730,7 @@ Observations* Observations::singleton = NULL;
     if (estimateoffsets==true) {
       try {
         control->get_string("OffsetFile",offset_filename);
-        fp_offset.open(offset_filename,ios::in);
+        fp_offset.open(offset_filename.c_str(),ios::in);
         if (!fp_offset.is_open()) {
           cerr << "Could not open " << offset_filename << endl;
           exit(EXIT_FAILURE);
@@ -740,7 +746,7 @@ Observations* Observations::singleton = NULL;
     }
 
     //--- Open file
-    fp.open(filename,ios::in);
+    fp.open(filename.c_str(),ios::in);
     if (!fp.is_open()) {
       cerr << "Could not open " << filename << endl;
       exit(EXIT_FAILURE);
@@ -780,7 +786,7 @@ Observations* Observations::singleton = NULL;
     using namespace std; 
     int      i;
     fstream  fp;
-    char     filename[80];
+    string   filename;
     Control  *control=Control::getInstance();
 
     try {
@@ -791,7 +797,7 @@ Observations* Observations::singleton = NULL;
     }
     cout.precision(5);
     cout << "--> " << filename << endl;
-    fp.open(filename,ios::out);
+    fp.open(filename.c_str(),ios::out);
     if (!fp.is_open()) {
       cerr << "Could not open " << filename << endl;
       exit(EXIT_FAILURE);

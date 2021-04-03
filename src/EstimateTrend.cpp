@@ -8,6 +8,7 @@
  */
 //=============================================================================
   #include "Minimizer.h"
+  #include "Statistics.h"
   #include <iostream>
   #include <ostream>
   #include <cstdlib>
@@ -19,7 +20,8 @@
 
   int main(int argc, char *argv[])
   {
-    Control   *control;
+    Control    *control;
+    Statistics statistics;
 
     using namespace std;
     //--- Open correct control file
@@ -43,6 +45,7 @@
 
     time(&start);
     minimizer.solve();
+    statistics.show();
     time(&end);
     cout << "Total computing time: " << difftime(end,start) << " sec" << endl;
 

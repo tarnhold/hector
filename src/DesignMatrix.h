@@ -23,7 +23,7 @@
         static bool         instanceFlag;
         static DesignMatrix *singleton;
         const double        tpi;
-        char                unit[30];
+        std::string         unit;
         int                 n,m,Ngaps,n_periodic_signals,n_offsets;
         double              dt,*H,*F,*periods,th;
         std::vector<double> offsets;

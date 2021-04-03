@@ -36,7 +36,7 @@ DesignMatrix* DesignMatrix::singleton = NULL;
     bool            estimate_offsets;
     int             i,j,k,l,year,month,day,hour,minute,Nnumbers;
     double          *t,*x,second;
-    char            **periodic_signals,**numbers;
+    string          periodic_signals[20],numbers[20];
     Observations    *observations=Observations::getInstance();
     Control         *control=Control::getInstance();
     Calendar        calendar;
@@ -70,7 +70,6 @@ DesignMatrix* DesignMatrix::singleton = NULL;
 
     //--- An additional number of 20 periodic signals may be added
     //    if keyword is not found, then that is okay too.
-    periodic_signals = new char* [20];
     try {
       control->get_name_list("periodicsignals",periodic_signals,
 							n_periodic_signals);
@@ -94,7 +93,7 @@ DesignMatrix* DesignMatrix::singleton = NULL;
     if (n_periodic_signals>0) {
       periods = new double[n_periodic_signals];
       for (i=0;i<n_periodic_signals;i++) {
-        sscanf(periodic_signals[i],"%lf",&periods[i]);
+        periods[i] = atof(periodic_signals[i].c_str());
       }
     } else {
       periods = NULL;
@@ -137,7 +136,6 @@ DesignMatrix* DesignMatrix::singleton = NULL;
 
     //--- See if there is a reference Epoch we should use for th
     try {
-      numbers = new char* [20];
       control->get_name_list("ReferenceEpoch",numbers,Nnumbers);
     } 
     catch (const char * str) {
@@ -148,9 +146,9 @@ DesignMatrix* DesignMatrix::singleton = NULL;
     if (Nnumbers==0) { // No ReferenceEpoch found, use middle of time-series
       th = 0.5*(t[0] + t[m-1]);
     } else if (Nnumbers==3) {
-      year  = atoi(numbers[0]);
-      month = atoi(numbers[1]);
-      day   = atoi(numbers[2]);
+      year  = atoi(numbers[0].c_str());
+      month = atoi(numbers[1].c_str());
+      day   = atoi(numbers[2].c_str());
       hour  = 0;
       minute= 0;
       second= 0.0;
@@ -229,11 +227,6 @@ DesignMatrix* DesignMatrix::singleton = NULL;
     } else {
       F = NULL;
     }
-
-    //--- free memory
-    for (i=0;i<n_periodic_signals;i++) delete[] periodic_signals[i];
-    for (i=0;i<Nnumbers;i++)           delete[] numbers[i];
-    delete[] periodic_signals;
   }
 
 
@@ -338,13 +331,13 @@ DesignMatrix* DesignMatrix::singleton = NULL;
     }
     for (j=0;j<n_periodic_signals;j++) {
       printf("cos %7.2lf : %lf +/- %lf %s\n",periods[j],theta[i],
-							error[i],unit); i++;
+						error[i],unit.c_str()); i++;
       printf("sin %7.2lf : %lf +/- %lf %s\n",periods[j],theta[i],
-							error[i],unit); i++;
+						error[i],unit.c_str()); i++;
     }
     for (j=0;j<n_offsets;j++) {
       printf("offset at %10.4lf : %lf +/- %lf %s\n",offsets[j],
-					       theta[i],error[i],unit); i++;
+				       theta[i],error[i],unit.c_str()); i++;
     }
   }
 

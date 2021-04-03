@@ -12,7 +12,6 @@
   #include <string>
   #include <iostream>
   #include <ostream>
-  #include <fstream>
   #include <string>
   #include "Control.h"
 
@@ -30,7 +29,7 @@
 //--!!------------------------------
   {
     using namespace std;
-    strcpy(ctl_file,file.c_str());
+    ctl_file = file;
     open_file();
   }
 
@@ -51,25 +50,28 @@
  *
  * \param[in] label: name of the parameter
  * \return The file-pointer is now located just before the value */
-//--------------------------------------------
-  void Control::find_label(const char label[])
-//--------------------------------------------
+//-------------------------------------------------
+  void Control::find_label(const std::string label)
+//-------------------------------------------------
   {
-    int          i,m;
-    char         c,line[100],*retval;
-    static char  error_message[80];
-
     using namespace std;
-    m  = strlen(label);
-    rewind(fp_in);
+    string       str,dummy,error_message;
+
+    fs.clear();
+    fs.seekg (0,fs.beg); // start at beginning of Control file
     do {
-      i=0; while((c=fgetc(fp_in))!=EOF && c!='\n' && c!=' '){line[i]=c;i++;} 
-      line[i]='\0';
-      if (i==m && strncmp(line,label,m)==0) return;       // if found...
-      retval = fgets(line,100,fp_in); // else skip rest of line
-    } while (c!=EOF);    
-    sprintf(error_message,"Could not find label: %s",label);
-    throw(const_cast<const char *>(error_message));
+      fs >> str;
+      if (fs.eof()!=true) {
+        if (str.compare(label)==0) {
+          return; // file pointer now starts at right place
+        } else {
+          getline(fs,dummy); // skip unwanted values in rest of line
+        }
+      }
+    } while (fs.eof()!=true);
+    fs.clear();
+    error_message = "Could not find label:" + label;
+    throw(const_cast<const char *>(error_message.c_str()));
   }
 
 
@@ -81,29 +83,25 @@
  * \param[out] value: array of n *chars filled with values 
  * \param[out] n: the number of values read
  */
-//---------------------------------------------------------------------
-  void Control::get_name_list(const char label[], char **value, int& n)
-//---------------------------------------------------------------------
+//--------------------------------------------------------------------------
+  void Control::get_name_list(const std::string label, std::string *value, 
+								     int& n)
+//--------------------------------------------------------------------------
   {
-    int      i1,i2,m;
-    char     line[150],*retval;
+    using namespace std;
+    string        str,line;
+    stringstream  fs_line;
 
-    n  = 0; // sofar no single value has been read
-    find_label(label);
-    retval = fgets(line,150,fp_in); // read the line containing the values
-    m  = strlen(line)-1;   // -1 because of removing '\n' in count
-    i1 = 0;
-    while (i1<m && line[i1]==' ') i1++; // skip spaces
-    i2 = i1;
-    while (i2<m) { // look for values as long as the line contains characters
-      while (i2<m && !(line[i2]==' ')) i2++; // find end of value
-      value[n] = new char[i2-i1+1];
-      strncpy(value[n],&line[i1],i2-i1);
-      value[n][i2-i1]='\0';
-      n++;
-      i1=i2; // move i1 to end of value which is at i2
-      while (i1<m && line[i1]==' ') i1++; // skip spaces
-      i2=i1;
+    find_label(label); // point file pointer to the right location
+    getline(fs,line);  // read the whole line into string 'line'
+    fs_line << line;   // copy line into the string-stream
+    n=0;
+    while (fs_line.eof()!=true) { // read each string from the string-stream
+      fs_line >> str;
+      if (str.length()>0) {
+        value[n] = str;
+        n++;
+      }
     }
   }
 
@@ -114,28 +112,17 @@
  * \param[in]  label[]: name of parameter
  * \param{out] value[]: the read value (string)
  */
-//----------------------------------------------------------
-  void Control::get_string(const char label[], char value[])
-//----------------------------------------------------------
+//---------------------------------------------------------------------
+  void Control::get_string(const std::string label, std::string& value)
+//---------------------------------------------------------------------
   {
-    int     i1,i2,m;
-    char    line[100],*retval;
-
     using namespace std;
-    strcpy(value,""); // If label is not found, return empty string
-    find_label(label);
-    retval = fgets(line,100,fp_in); // read the line containing the values
-    m  = strlen(line);
-    i1 = 0;
-    while (i1<m && line[i1]==' ') i1++; // skip spaces
-    if (i1==m) {
+    find_label(label); // point file pointer to the right location
+    fs >> value;
+    if (value.size()==0) {
       cerr << "Not found a string for label " << label << endl;
       exit(EXIT_FAILURE);
     }
-    i2 = i1;
-    while (i2<m && !(line[i2]==' ' || line[i2]=='\n')) i2++; // find end 
-    strncpy(value,&line[i1],i2-i1);
-    value[i2-i1]='\0';
   }
 
 
@@ -145,18 +132,17 @@
  * \param[in]  label: name of parameter (string)
  * \return boolean (yes=true, no=false)
  */
-//------------------------------------------
-  bool Control::get_bool(const char label[])
-//------------------------------------------
+//-----------------------------------------------
+  bool Control::get_bool(const std::string label)
+//-----------------------------------------------
   {
-    char   line[100],answer[100],*retval;
-
     using namespace std;
+    string   answer;
+
     find_label(label);
-    retval = fgets(line,100,fp_in);
-    sscanf(line,"%s",answer);
-    if      (answer[0]=='y' || answer[0]=='Y') return true;
-    else if (answer[0]=='n' || answer[0]=='N') return false;
+    fs >> answer;
+    if      (answer.compare("y")==0 || answer.compare("yes")==0) return true;
+    else if (answer.compare("n")==0 || answer.compare("no")==0)  return false;
     else {
       cerr << "Not a bool answer for label " << label << ":" << answer << endl;
       exit(EXIT_FAILURE);
@@ -170,18 +156,21 @@
  * \param[in]  label: name of parameter (string)
  * \return integer that is read
  */
-//----------------------------------------
-  int Control::get_int(const char label[])
-//----------------------------------------
+//---------------------------------------------
+  int Control::get_int(const std::string label)
+//---------------------------------------------
   {
-    int   answer;
+    int   i;
 
     using namespace std;
     find_label(label);
-    if (fscanf(fp_in,"%d",&answer)>0) return answer;
-    else {
+    fs >> i;
+    if (fs.fail()==true) {
       cerr << "Not an int answer for label " << label << endl;
       exit(EXIT_FAILURE);
+    } else {
+      cout << "int ->> " << i << endl;
+      return i;
     }
   }
 
@@ -192,18 +181,21 @@
  * \param[in]  label: name of parameter (string)
  * \return double that is read
  */
-//----------------------------------------------
-  double Control::get_double(const char label[])
-//----------------------------------------------
+//---------------------------------------------------
+  double Control::get_double(const std::string label)
+//---------------------------------------------------
   {
-    double   answer;
+    double   y;
 
     using namespace std;
     find_label(label);
-    if (fscanf(fp_in,"%lf",&answer)>0) return answer;
-    else {
-      cerr<<"Not a double answer for label " << label << endl;
+    fs >> y;
+    if (fs.fail()==true) {
+      cerr << "Not an double answer for label " << label << endl;
       exit(EXIT_FAILURE);
+    } else {
+      cout << "double ->> " << y << endl;
+      return y;
     }
   }
 
@@ -217,8 +209,8 @@
 //-----------------------------
   {
     using namespace std;
-    fp_in = fopen(ctl_file,"rt");
-    if (fp_in==NULL) {
+    fs.open(ctl_file.c_str(),fstream::in);
+    if (fs.is_open()!=true) {
       cerr << "Could not open " << ctl_file << endl;
       exit(EXIT_FAILURE);
     }
@@ -231,10 +223,7 @@
   void Control::close_file(void)
 //----------------------------------
   {
-    if (fp_in!=NULL) {
-      fclose(fp_in);
-      fp_in = NULL;
-    }
+    if (fs.is_open()==true)  fs.close();
   }
 
 

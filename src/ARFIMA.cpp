@@ -61,16 +61,6 @@
     cout << "p=" << p << ", q=" << q << ", Nparam=" << Nparam << endl;
 #endif
 
-    //---- Have not implemented first difference ARFIMA yet!
-    try {
-      if (control->get_bool("firstdifference")==true) {
-      cerr << "Have not implemented first differenced ARFIMA!" << endl;
-      exit(EXIT_FAILURE);
-      }
-    }
-    catch (const char* str) {
-    }
-
     //--- Set following arrays to NULL to avoid problems later on
     psi_PSD = NULL;
     rho_PSD = NULL;
@@ -501,6 +491,7 @@
 //-----------------------------------------------
   {
     int  i;
+    Control  *control=Control::getInstance();
 
     using namespace std;
     for (i=0;i<Nparam;i++) {
@@ -509,7 +500,11 @@
       } else if (i>=p && i<(p+q)) {
         printf("MA[%1d] = %8.4lf +/- %6.4lf\n",i+1-p,param[i],error[i]);
       } else if (i==(p+q)) {
-        printf("d     = %8.4lf +/- %6.4lf\n",param[i],error[i]);
+        if (control->get_bool("firstdifference")==true) {
+          printf("d     = %8.4lf +/- %6.4lf\n",param[i]+1.0,error[i]);
+        } else {
+          printf("d     = %8.4lf +/- %6.4lf\n",param[i],error[i]);
+        }
       }
     }
   }
@@ -551,9 +546,9 @@
       if (param[p+q]>0.499) {
         penalty   += (param[p+q]-0.499)*LARGE;
         param[p+q] = 0.499;
-      } else if (param[p+q]<-0.499) {
-        penalty   += (-0.499-param[p+q])*LARGE;
-        param[p+q] = -0.499;
+      } else if (param[p+q]<-0.999) {
+        penalty   += (-0.999-param[p+q])*LARGE;
+        param[p+q] = -0.999;
       }
     }
 

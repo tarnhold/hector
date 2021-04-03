@@ -28,6 +28,7 @@
 
     using namespace std;
     Nparam = 2;
+/*
     //--- Sanity check (Observations.cpp already checks if firstdifference
     //    keyword exists in the first place.
     try {
@@ -38,6 +39,7 @@
     }
     catch (const char* str) {
     }
+*/
   }
 
 

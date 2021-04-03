@@ -43,13 +43,13 @@ Likelihood* Likelihood::singleton = NULL;
   Likelihood* Likelihood::getInstance(void)
 //--!!-------------------------------------
   {
+    using namespace std;
     int           Ngaps;
     double        fraction;
     Control       *control = Control::getInstance();
     Observations  *observations = Observations::getInstance();
-    char          methodname[80];
+    string        methodname;
 
-    using namespace std;
     Ngaps = observations->number_of_gaps();
     if (instanceFlag==false) {
       instanceFlag=true;
@@ -62,19 +62,19 @@ Likelihood* Likelihood::singleton = NULL;
         fraction = static_cast<double>(Ngaps)/
 	     static_cast<double>(observations->number_of_observations());
         if (fraction<0.5) {
-          strcpy(methodname,"AmmarGrag");
+          methodname = "AmmarGrag";
         } else {
-          strcpy(methodname,"FullCov");
+          methodname = "FullCov";
         }
       }   
       cout << endl << "----------------" << endl << "  " << methodname
            << endl << "----------------" << endl;
-      if (strcmp(methodname,"Levinson")==0) {
+      if (methodname.compare("Levinson")==0) {
         if (Ngaps==0)  singleton = new LevinsonNoGap();
         else           singleton = new LevinsonGap();
-      } else if (strcmp(methodname,"AmmarGrag")==0) {
+      } else if (methodname.compare("AmmarGrag")==0) {
         singleton = new AmmarGrag();
-      } else if (strcmp(methodname,"FullCov")==0) {
+      } else if (methodname.compare("FullCov")==0) {
         singleton = new FullCov();
       } else {
         cerr << "Unkown Likelihood Method: " << methodname << endl;

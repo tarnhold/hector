@@ -21,6 +21,7 @@
         double                *param,*error;
 
         void   fill_X(int k0, double s0, int k1, double s1, double *X);
+        void   show_BIC(void);
         void   compute_inv_Fisher(double* C);
         void   compute_confidence_intervals(void);
 

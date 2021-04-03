@@ -21,17 +21,21 @@
   SimulateNoise::SimulateNoise(void)
 //---!!-----------------------------
   {
+    using namespace std;
     Control       *control=Control::getInstance();
     NoiseModel    *noisemodel=NoiseModel::getInstance();
     int           i,j,k,n_simulations,m,ms;
-    char          directory[80],label[30],filename[120];
+    string        directory,label,filename;
     double        *y,*MJD,dt,ts;
     FILE          *fp;
-
-    using namespace std;
+    stringstream  ss;
+  
     //--- Which noise models must be used
     try {
       control->get_string("SimulationDir",directory);
+      if (directory.at(directory.length()-1)!='/') {
+        directory += "/";
+      }
       control->get_string("SimulationLabel",label);
       n_simulations = control->get_int("NumberOfSimulations");
       m             = control->get_int("NumberOfPoints");
@@ -60,13 +64,9 @@
     for (i=0;i<n_simulations;i++) {
       cout << "simulation run:" << i << endl;
       //--- Open file to store time-series
-      k = strlen(directory);
-      if (directory[k-1]=='/') {
-        sprintf(filename,"%s%s_%d.mom",directory,label,i);
-      } else {
-        sprintf(filename,"%s/%s_%d.mom",directory,label,i);
-      }
-      fp = fopen(filename,"w");
+      ss << i;
+      filename = directory + label + "_" + ss.str() + ".mom";
+      fp = fopen(filename.c_str(),"w");
       if (fp==NULL) {
         cerr << "Could not open" << filename << endl;
         exit(EXIT_FAILURE);

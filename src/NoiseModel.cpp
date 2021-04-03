@@ -20,7 +20,7 @@
   #include <cstdlib>
   #include <cstring>
 
-//  #define DEBUG
+  //  #define DEBUG
 
 //=============================================================================
 // Subroutines
@@ -37,13 +37,15 @@ NoiseModel* NoiseModel::singleton = NULL;
   NoiseModel::NoiseModel(void)
 //--!!------------------------
   {
+    using namespace std;
     int      i;
     Control  *control = Control::getInstance();
 
-    using namespace std;
-    noisemodel = new char* [5];
     try {
       control->get_name_list("NoiseModels",noisemodel,Nmodels);
+//---------
+      for (i=0;i<Nmodels;i++) cout << i << ") " << noisemodel[i] << endl;
+//---------
     } 
     catch (const char* str) {
       cerr << str << endl;
@@ -80,23 +82,28 @@ NoiseModel* NoiseModel::singleton = NULL;
 
     //--- Create all necessary classes
     for (i=0;i<Nmodels;i++) {
-      if (strcmp(noisemodel[i],"White")==0) {
+      if (noisemodel[i].compare("White")==0) {
         modelIndv[i] = new White;
-      } else if (strcmp(noisemodel[i],"Powerlaw")==0) {
+      } else if (noisemodel[i].compare("Powerlaw")==0) {
         modelIndv[i] = new Powerlaw();
-      } else if (strcmp(noisemodel[i],"Flicker")==0) {
+      } else if (noisemodel[i].compare("Flicker")==0) {
         modelIndv[i] = new Powerlaw(0.5);
-      } else if (strcmp(noisemodel[i],"RandomWalk")==0) {
+      } else if (noisemodel[i].compare("RandomWalk")==0) {
         modelIndv[i] = new Powerlaw(1.0);
-      } else if (strcmp(noisemodel[i],"PowerlawApprox")==0) {
+      } else if (noisemodel[i].compare("PowerlawApprox")==0) {
         modelIndv[i] = new PowerlawApprox;
-      } else if (strcmp(noisemodel[i],"FlickerApprox")==0) {
+      } else if (noisemodel[i].compare("FlickerApprox")==0) {
         modelIndv[i] = new PowerlawApprox(0.5);
-      } else if (strcmp(noisemodel[i],"ARFIMA")==0) {
+      } else if (noisemodel[i].compare("ARFIMA")==0) {
         modelIndv[i] = new ARFIMA();
-      } else if (strcmp(noisemodel[i],"ARMA")==0) {
-        modelIndv[i] = new ARFIMA(0.0);
-      } else if (strcmp(noisemodel[i],"GGM")==0) {
+      } else if (noisemodel[i].compare("ARMA")==0) {
+        if (control->get_bool("firstdifference")==true) {
+          modelIndv[i] = new ARFIMA(-0.999);
+          //modelIndv[i] = new ARFIMA(-1.0);
+        } else {
+          modelIndv[i] = new ARFIMA(0.0);
+        }
+      } else if (noisemodel[i].compare("GGM")==0) {
         modelIndv[i] = new GenGaussMarkov;
       } else {
         cerr << "Unknown noise model: " << noisemodel[i] << endl;
@@ -122,23 +129,46 @@ NoiseModel* NoiseModel::singleton = NULL;
     int    i;
 
     if (h!=NULL) { //-- This implies also F_h != NULL
-      delete[] h;
-      delete[] w;
+      fftw_free (h);
+      fftw_free (w);
       fftw_free (F_h);
       fftw_free (F_w);
       fftw_destroy_plan ( plan_forward );
       fftw_destroy_plan ( plan_backward );
     }
     if (Nmodels>0) {
-      for (i=0;i<Nmodels;i++) {
-        delete[] noisemodel;
-      }
       delete[] modelIndv;
       delete[] NparamIndv;
       delete[] phi;
       delete[] fraction_fixed;
     }
     gsl_rng_free (r_random);
+  }
+
+
+
+/*! compute fraction
+ */
+//---------------------------------------------------------
+  double NoiseModel::compute_fraction(int i, double *param)
+//---------------------------------------------------------
+  {
+    int      j;
+    double   fraction;
+    
+    fraction = 1.0;
+    if (Nmodels>1) {
+      if (i==0) {
+        fraction = param[0];
+      } else if (i==Nmodels-1) {
+        for (j=0;j<Nmodels-1;j++) fraction *= (1.0-param[j]);
+      } else {
+        for (j=0;j<i;j++) fraction *= (1.0-param[j]);
+        fraction *= param[i];
+      }
+    }
+
+    return fraction;
   }
 
 
@@ -167,15 +197,7 @@ NoiseModel* NoiseModel::singleton = NULL;
       modelIndv[i]->get_covariance(&param[k],m,gamma_xIndv);
       
       //--- Compute fraction
-      fraction = 1.0;
-      if (i<Nmodels-1) {
-        for (j=0;j<Nmodels-1;j++) { 
-          if (j==i) fraction *= (1.0-param[j]);
-          else      fraction *= param[j];
-        } 
-      } else {
-        for (j=0;j<Nmodels-1;j++) fraction *= param[j]; 
-      }
+      fraction = compute_fraction(i,param);
 #ifdef DEBUG
       cout << "i=" << i << ", fraction=" << fraction << endl;
 #endif
@@ -213,15 +235,7 @@ NoiseModel* NoiseModel::singleton = NULL;
     for (i=0;i<Nmodels;i++) {
       
       //--- Compute fraction and show it
-      fraction = 1.0;
-      if (i<Nmodels-1) {
-        for (j=0;j<Nmodels-1;j++) { 
-          if (j==i) fraction *= (1.0-param[j]);
-          else      fraction *= param[j];
-        } 
-      } else {
-        for (j=0;j<Nmodels-1;j++) fraction *= param[j]; 
-      }
+      fraction = compute_fraction(i,param);
       cout << endl << noisemodel[i] << ": fraction=" << fraction << endl;
 
       //--- Show value noise parameters
@@ -320,7 +334,7 @@ NoiseModel* NoiseModel::singleton = NULL;
   void NoiseModel::setup_MonteCarlo(int m)
 //----------------------------------------
   {
-    int    i,j;
+    int    i,j,ny,nyc;
 
     using namespace std;
     //--- Ask user about the driving white noise and the fractions
@@ -333,21 +347,23 @@ NoiseModel* NoiseModel::singleton = NULL;
  
     //--- Allocate memory to hold impulse function and its Fourier transform
     //    for each noise model.
-    h   = new double [2*m];
-    w   = new double [2*m];
-    F_h = (fftw_complex*) fftw_malloc(sizeof(fftw_complex)*Nmodels*(m+1));
-    F_w = (fftw_complex*) fftw_malloc(sizeof(fftw_complex)*(m+1));
+    ny  = 2*m;
+    nyc = ny/2+1;
+    h   = (double *)(fftw_malloc(sizeof(double)*ny));
+    w   = (double *)(fftw_malloc(sizeof(double)*ny));
+    F_h = (fftw_complex*) fftw_malloc(sizeof(fftw_complex)*Nmodels*nyc);
+    F_w = (fftw_complex*) fftw_malloc(sizeof(fftw_complex)*nyc);
 
     //--- we need to create a forward and backward plan
-    plan_forward  = fftw_plan_dft_r2c_1d ( 2*m,   w, F_w, FFTW_ESTIMATE);
-    plan_backward = fftw_plan_dft_c2r_1d ( 2*m, F_w,   w, FFTW_ESTIMATE);
+    plan_forward  = fftw_plan_dft_r2c_1d ( ny,   w, F_w, FFTW_ESTIMATE);
+    plan_backward = fftw_plan_dft_c2r_1d ( ny, F_w,   w, FFTW_ESTIMATE);
 
     //--- Setup each noise model and already compute the Fourier transform of h
     for (i=0;i<Nmodels;i++) {
       cout << endl << noisemodel[i] << ":" << endl;
       modelIndv[i]->compute_impulse_response(m,h);
       memset(&h[m],0,m*sizeof(double)); //--- zero padding of last m entries
-      fftw_execute_dft_r2c(plan_forward,h,&F_h[i*(m+1)]);
+      fftw_execute_dft_r2c(plan_forward,h,&F_h[nyc*i]);
 #ifdef DEBUG
       for (j=0;j<m+1;j++) cout << "j=" << j << ", " << F_h[j][0] << ", "
 					 	    << F_h[j][1] << endl;
@@ -376,7 +392,8 @@ NoiseModel* NoiseModel::singleton = NULL;
     using namespace std;
     for (i=0;i<Nmodels;i++) {
       memset(&w[m],0,m*sizeof(double)); //--- zero padding of last m entries
-      for (j=0;j<m;j++) w[j] = gsl_ran_gaussian(r_random,fraction_fixed[i]);
+      for (j=0;j<m;j++) w[j] = gsl_ran_gaussian(r_random,1.0);
+      cout << "fraction " << i << "=" << fraction_fixed[i] << endl;
       fftw_execute_dft_r2c(plan_forward,w,F_w);
 
       //--- Compute F_h*F_w in frequency domain
@@ -393,7 +410,7 @@ NoiseModel* NoiseModel::singleton = NULL;
       //for (j=0;j<2*m;j++) cout << "> j=" << j << ", " << w[j] << endl;
 
       //--- add to vector y
-      cblas_daxpy(m,1.0,w,1,y,1);
+      cblas_daxpy(m,sqrt(fraction_fixed[i]),w,1,y,1);
       //for (j=0;j<m;j++) cout << "y --> j=" << j << ", " << w[j] << endl;
     }
 
