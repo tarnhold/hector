@@ -1,12 +1,13 @@
-# Makefile for the hector-1.0 programs
+# Makefile for the hector-1.3 programs
 #
 #  2/10/2012 Machiel Bos
 # 13/ 1/2013 Machiel Bos
+# 11/ 6/2014 Machiel Bos
 #===============================================================================
 
 include ../Makefile.inc
 
-VERSION=1.2
+VERSION=1.3
 
 #--- Directory where programs will be installed
 BINDIR=$(PREFIX)/bin

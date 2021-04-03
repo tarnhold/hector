@@ -96,7 +96,7 @@
     getline(fs,line);  // read the whole line into string 'line'
     fs_line << line;   // copy line into the string-stream
     n=0;
-    while (fs_line.eof()!=true) { // read each string from the string-stream
+    while (fs_line.good()==true && fs_line.eof()!=true) {
       fs_line >> str;
       if (str.length()>0) {
         value[n] = str;
@@ -141,8 +141,8 @@
 
     find_label(label);
     fs >> answer;
-    if      (answer.compare("y")==0 || answer.compare("yes")==0) return true;
-    else if (answer.compare("n")==0 || answer.compare("no")==0)  return false;
+    if      (answer.compare("Yes")==0 || answer.compare("yes")==0) return true;
+    else if (answer.compare("No")==0  || answer.compare("no")==0)  return false;
     else {
       cerr << "Not a bool answer for label " << label << ":" << answer << endl;
       exit(EXIT_FAILURE);
@@ -169,7 +169,6 @@
       cerr << "Not an int answer for label " << label << endl;
       exit(EXIT_FAILURE);
     } else {
-      cout << "int ->> " << i << endl;
       return i;
     }
   }
@@ -194,7 +193,6 @@
       cerr << "Not an double answer for label " << label << endl;
       exit(EXIT_FAILURE);
     } else {
-      cout << "double ->> " << y << endl;
       return y;
     }
   }

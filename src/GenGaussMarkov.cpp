@@ -165,9 +165,9 @@
 
     using namespace std;
     //--- phi
-    if (param[1]>0.9999) {
-      penalty += (param[1]-0.9999)*LARGE;
-      param[1] = 0.9999;
+    if (param[1]>0.999) {
+      penalty += (param[1]-0.999)*LARGE;
+      param[1] = 0.999;
     } else if (param[1]<0.0) {
       penalty += (0.0-param[1])*LARGE;
       param[1] = 0.0;

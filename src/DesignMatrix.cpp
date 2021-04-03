@@ -34,7 +34,7 @@ DesignMatrix* DesignMatrix::singleton = NULL;
   {
     using namespace std;
     bool            estimate_offsets;
-    int             i,j,k,l,year,month,day,hour,minute,Nnumbers;
+    int             i,j,k,l,year,month,day,hour,minute,Nnumbers=0;
     double          *t,*x,second;
     string          periodic_signals[20],numbers[20];
     Observations    *observations=Observations::getInstance();
