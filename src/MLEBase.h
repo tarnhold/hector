@@ -3,7 +3,7 @@
  *
  * Header file for MLEBase.cpp. 
  *
- *  This script is part of Hector 1.7.2
+ *  This script is part of Hector 1.9
  *
  *  Hector is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,6 +28,7 @@
     #include "DesignMatrix.h"
     #include "Observations.h"
     #include "NoiseModel.h"
+    #include "JSON.h"
 
     class MLEBase
     {

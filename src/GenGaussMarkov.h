@@ -3,7 +3,7 @@
  *
  * Header file for GenGaussMarkov.cpp
  *
- *  This script is part of Hector 1.7.2
+ *  This script is part of Hector 1.9
  *
  *  Hector is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -33,9 +33,10 @@
     {
       private:
         int          Nparam;
+        const double NaN;
         std::string  unit;
         double       d_fixed,phi_fixed;
-        double       hyperg_2F1(double a, double b, double c, double z);
+        double       my_2F1(double a, double b, double c, double z);
         double       backward(double a, double b, double c, double z,
                                                         double F, double Fp1);
 

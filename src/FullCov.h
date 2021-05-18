@@ -4,7 +4,7 @@
  * Header file for the class that uses the full covariance matrix and
  * afterwards eliminates the rows and gaps for missing data.
  *
- *  This script is part of Hector 1.7.2
+ *  This script is part of Hector 1.9
  *
  *  Hector is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,10 +28,7 @@
     #include "NoiseModel.h"
     #include "Observations.h"
     #include "DesignMatrix.h"
-    extern "C" {
-      #include "cblas.h"
-      #include "clapack.h"
-    };
+    #include "cblas.h"
 
     class FullCov : public MLEBase
     {

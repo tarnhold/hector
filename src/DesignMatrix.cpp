@@ -4,7 +4,7 @@
  * This class provides the Design Matrix H that is needed in the 
  * Least-Squares part of the computation of the Likelihood.
  *
- *  This script is part of Hector 1.7.2
+ *  This script is part of Hector 1.9
  *
  *  Hector is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -463,7 +463,7 @@ DesignMatrix* DesignMatrix::singleton = NULL;
 #ifdef DEBUG
     myfile.open("H.dat", ios::out);
     for (i=0;i<m;i++) {
-      if (isnan(x[i])==false) {
+      if (std::isnan(x[i])==false) {
         for (j=0;j<n;j++) myfile << H[i + j*m] << "  ";
         myfile << endl;
       }
@@ -480,7 +480,7 @@ DesignMatrix* DesignMatrix::singleton = NULL;
       //--- Put the ones in the right places
       j=0;
       for (i=0;i<m;i++) {
-        if (isnan(x[i])) {
+        if (std::isnan(x[i])) {
           F[i + j*m] = 1.0;
           j++;
         }
@@ -566,10 +566,11 @@ DesignMatrix* DesignMatrix::singleton = NULL;
 			  double sigma_in, double& Amp, double& sigma_out)
 //------------------------------------------------------------------------
   {
-    double   nu,L12;
+    double   nu,L12,mhalf=-0.5,one=1.0;
 
     nu        = sqrt(Ac*Ac + As*As);
-    L12       = gsl_sf_hyperg_1F1(-0.5,1.0,-pow(nu/sigma_in,2.0)/2.0);
+    L12       = boost::math::hypergeometric_1F1(mhalf,one,
+				static_cast<double>(-pow(nu/sigma_in,2.0)/2.0));
 
     Amp       = sqrt(pi/2.0)*sigma_in*L12;
     sigma_out = sqrt(2.0*pow(sigma_in,2.0) + pow(nu,2.0) - 
@@ -592,8 +593,11 @@ DesignMatrix* DesignMatrix::singleton = NULL;
     int            i,j,k,year,month,day,hour,minute;
     double         ds = 365.25,second,corr_pos,corr_vel,Amp,sigma_out;
     double         *xhat,*theta_dummy;
+    string         date;
+    vector<string> offset_lst;
     fstream        fp;
     Calendar       calendar;
+    JSON           &json = JSON::getInstance();
 
     i=0;
     cout << fixed << setprecision(3);
@@ -615,6 +619,9 @@ DesignMatrix* DesignMatrix::singleton = NULL;
       if (degree_polynomial>0) {
         cout << "trend: " << theta[1]*ds << " +/- " << error[1]*ds
              << " " << unit << "/year" << endl;
+        //--- Add to JSON file
+        json.write_double("trend",ds*theta[1]);
+        json.write_double("trend_sigma",ds*error[1]);
       }
       if (degree_polynomial>1) {
         cout << "quadratic (half acceleration): " << theta[2]*ds*ds 
@@ -660,8 +667,14 @@ DesignMatrix* DesignMatrix::singleton = NULL;
     } else {
       if (seasonal_signal==true) {
         cout<<"cos yearly : " << theta[i] <<" +/- "<<error[i]<<" "<<unit<<endl;
+        //--- Add to JSON file
+        json.write_double("Sa_cos",theta[i]);
+        json.write_double("Sa_cos_sigma",error[i]);
         i++;
         cout<<"sin yearly : " << theta[i] <<" +/- "<<error[i]<<" "<<unit<<endl;
+        //--- Add to JSON file
+        json.write_double("Sa_sin",theta[i]);
+        json.write_double("Sa_sin_sigma",error[i]);
         i++;
         compute_Amp(theta[i-2],theta[i-1],0.5*(error[i-2]+error[i-1]),
 							   Amp,sigma_out);
@@ -672,8 +685,14 @@ DesignMatrix* DesignMatrix::singleton = NULL;
 
       if (halfseasonal_signal==true) {
         cout<<"cos hyearly : " << theta[i] <<" +/- "<<error[i]<<" "<<unit<<endl;
+        //--- Add to JSON file
+        json.write_double("Ssa_cos",theta[i]);
+        json.write_double("Ssa_cos_sigma",error[i]);
         i++;
         cout<<"sin hyearly : " << theta[i] <<" +/- "<<error[i]<<" "<<unit<<endl;
+        //--- Add to JSON file
+        json.write_double("Ssa_sin",theta[i]);
+        json.write_double("Ssa_sin_sigma",error[i]);
         i++;
         compute_Amp(theta[i-2],theta[i-1],0.5*(error[i-2]+error[i-1]),
 							   Amp,sigma_out);
@@ -685,17 +704,27 @@ DesignMatrix* DesignMatrix::singleton = NULL;
 
     //--- Periodic signals
     for (j=0;j<n_periodic_signals;j++) {
-      printf("cos %7.2lf : %lf +/- %lf %s\n",periods[j],theta[i],
+      printf("cos %8.3lf : %lf +/- %lf %s\n",periods[j],theta[i],
 						error[i],unit.c_str()); i++;
-      printf("sin %7.2lf : %lf +/- %lf %s\n",periods[j],theta[i],
+      printf("sin %8.3lf : %lf +/- %lf %s\n",periods[j],theta[i],
 						error[i],unit.c_str()); i++;
       compute_Amp(theta[i-2],theta[i-1],0.5*(error[i-2]+error[i-1]),
 							   Amp,sigma_out);
-      printf("amp %7.2lf : %lf +/- %lf %s\n",periods[j],Amp,
+      printf("amp %8.3lf : %lf +/- %lf %s\n",periods[j],Amp,
 							sigma_out,unit.c_str());
-      printf("pha %7.2lf : %lf degrees\n",periods[j],
+      printf("pha %8.3lf : %lf degrees\n",periods[j],
 					      atan2(theta[i-1],theta[i-2])/rad);
     }
+    //--- Add to JSON file
+    for (j=0;j<n_offsets;j++) {
+      calendar.MJD_to_ISO8601(offsets[j],date);
+      offset_lst.push_back(date);
+    }
+    json.write_chararray_list("jumps_epochs",offset_lst);
+    json.write_double_list("jumps_sizes",n_offsets,&theta[i]);
+    //--- Offset sigmas have the honour of being the last item in the JSON file
+    json.write_double_list("jumps_sigmas",n_offsets,&error[i],true);
+
     for (j=0;j<n_offsets;j++) {
       if (estimate_multitrend && breaks.size()>0) {
         for (k=0;k<breaks.size();k++) {

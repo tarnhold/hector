@@ -10,7 +10,7 @@
  * before I could compute the slope. Nevertheless, once the data is
  * stored in Memory, I interpolate the data or fill them with NaN's.
  *
- *  This script is part of Hector 1.7.2
+ *  This script is part of Hector 1.9
  *
  *  Hector is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -53,9 +53,15 @@
 //---!!-------------------------------------------
   {
     using namespace std;
-    string    datafile,filename,directory;
-    int       i,n,choice;
-    Control   &control = Control::getInstance();
+    fstream       fp;
+    string        whitespaces (" \t\f\v\n\r");
+    string        datafile,filename,directory,str,line;
+    stringstream  fs_line;
+    int           i,n,choice;
+    size_t        found;
+    double        mjd,s;
+    Control       &control = Control::getInstance();
+    JSON          &json = JSON::getInstance();
 
     //--- To ensure the right sampling frequency is read, fs=NaN at first
     fs=NaN;
@@ -83,6 +89,50 @@
       scale_factor = control.get_double("ScaleFactor");
     } catch (exception &e) {
       scale_factor = 1.0;
+    }
+
+    //--- Do we need to subtract a signal from the observations?
+    try {
+      subtract_signal = control.get_bool("subtractsignal");
+    }
+    catch (exception &e) {
+      subtract_signal = false;
+    }
+    if (subtract_signal==true) {
+      try {
+        control.get_string("SignalFile",filename);
+      } catch (exception &e) {
+        cerr << e.what() << endl;
+        exit(EXIT_FAILURE);
+      }
+      //--- Open file with signal
+      fp.open(filename.c_str(),ios::in);
+      if (!fp.is_open()) {
+        cerr << "Could not open " << filename << endl;
+        exit(EXIT_FAILURE);
+      }
+
+      signal.clear();
+      //--- Read file
+      while (getline(fp,line)) {  // read the whole line into string 'line'
+        //--- Remove trailing spaces since >> chokes on them
+        found = line.find_last_not_of(whitespaces);
+        if (found!=std::string::npos) {
+          line.erase(found+1);
+        }
+
+        if (std::strlen(line.c_str())>0) {
+          if (line[0]!='#') {
+            signal.push_back(line);
+            cout << line << endl;
+          }
+        } else {
+          cerr << "Ooops found empty line in " << filename << endl;
+          cerr << "This cannot be good...." << endl;
+          exit(EXIT_FAILURE);
+        }
+      }
+      fp.close();
     }
 
     //--- construct filename
@@ -118,6 +168,27 @@
     //--- read the data
     (*this.*read_observations)(filename);
 
+    //--- Subtract extra signal from observations
+    if (subtract_signal == true) {
+      if (signal.size()!=t.size()) {
+        cerr<<"Number of rows in signal is not the same as observations"<<endl;
+        cerr << signal.size() << ", " << t.size() << endl;
+        exit(EXIT_FAILURE);
+      } else {
+        for (i=0;i<t.size();i++) {
+          fs_line.clear();
+          fs_line << signal[i];   // copy line into the string-stream 
+          fs_line >> mjd >> s;
+          if (fabs(t[i]-mjd)<1.0e-4) {
+            x[i] -= s;
+          } else {
+            cerr << "not corresponding times! " << t[i] << ", " << mjd << endl;
+            exit(EXIT_FAILURE);
+          }
+        }
+      }
+    }
+
     //--- For the handling of the gaps I need to know some things
     try {
       interpolate_data = control.get_bool("interpolate");
@@ -143,13 +214,17 @@
     //--- Count gaps    
     Ngaps=0;
     for (i=0;i<x.size();i++) {
-      if (isnan(x[i])) Ngaps++;
+      if (std::isnan(x[i])) Ngaps++;
     }
 
     //--- Give summary of read data
     cout << "Filename              : " << filename << endl;
     cout << "Number of observations: " << t.size() << endl;
     cout << "Percentage of gaps    : " << double(Ngaps)/t.size()*100.0 << endl;
+
+    //--- Write to JSON file
+    json.write_int("N",t.size());
+    json.write_double("gap_percentage",double(Ngaps)/t.size()*100.0);
   }
 
 
@@ -202,7 +277,7 @@
         }
       } else if (strncmp("# sampling period",line,17)==0) {
         if (sscanf(&line[17],"%lf",&T)==1) {
-          if (!isnan(fs)) {
+          if (!std::isnan(fs)) {
             if (fabs(fs*24.0*3600.0 - T)>0.001) {
               cerr << "Weird, fs was set but different to header info" << endl
                    << "T=" << T << ",  fs=" << fs << endl;
@@ -281,7 +356,7 @@
         //    look for the control file to know which component we need.
         cout << "MJD=" << MJD << ", " << comp[0] << ", " << comp[1] 
 						<< ", " << comp[2] << endl;
-        if (isnan(comp[component])==true) {
+        if (std::isnan(comp[component])==true) {
           offsets.push_back(MJD);
         }
       } else if (strlen(line)>0) {
@@ -318,7 +393,7 @@
         //--- find index
         j=0;
         while (t[j]<offsets[i]-TINY || (t[j]>offsets[i]-TINY 
-						&& isnan(x[j]))) j++;
+						&& std::isnan(x[j]))) j++;
         //cout << "i=" << i << ", index=" << j << " t[j]=" << t[j] <<  endl;
         index_already_used = false;
         for (k=0;k<index.size();k++) {
@@ -481,7 +556,7 @@
         cout << "Found x & xhat: " << obs << ", " << mod << endl;
 #endif
         t.push_back(MJD);
-        if (isnan(obs) || isnan(mod)) {
+        if (std::isnan(obs) || std::isnan(mod)) {
           cerr << "Found a NaN! : obs=" << obs << ", mod=" << mod << endl;
           exit(EXIT_FAILURE);
         } else {
@@ -491,7 +566,7 @@
 #ifdef DEBUG
         cout << "Found x " << obs << endl;
 #endif
-        if (!isnan(obs)) {
+        if (!std::isnan(obs)) {
           t.push_back(MJD);
           x.push_back(scale_factor*obs);
         }
@@ -507,7 +582,7 @@
     
 
     //--- Determine sampling period
-    if (isnan(fs)) determine_fs();
+    if (std::isnan(fs)) determine_fs();
   }
 
 
@@ -627,7 +702,7 @@
     fp.close();
 
     //--- Determine sampling period
-    if (isnan(fs)) determine_fs();
+    if (std::isnan(fs)) determine_fs();
   }
 
 
@@ -733,7 +808,7 @@
     fp.close();
 
     //--- Determine sampling period
-    if (isnan(fs)) {
+    if (std::isnan(fs)) {
       cerr << "Could not determine sampling period!" << endl;
       exit(EXIT_FAILURE);
     } 
@@ -776,7 +851,7 @@
       if (xhat.size()==0) { 
         fp << fixed << t[i] << "  " << x[i] << endl;
       } else {
-        if (!isnan(x[i])) {
+        if (!std::isnan(x[i])) {
           fp << fixed << t[i] << "  " << x[i] << "  " << xhat[i] << endl;
         }
       }
@@ -875,6 +950,9 @@
           j++;
         } while ((t[i]-t_new[j]-dt)>0.1*dt);
         if (fabs(t[i]-t_new[j]-dt)>0.1*dt) {
+          printf("dt=%12.8f\n",dt);
+          printf("t[i]=%15.6f\n",t[i]);
+          printf("t_new[j]=%15.6f\n",t_new[j]);
           cerr << "Oops, missing data timing problem at MJD=" << t[i] << endl;
           cerr << "t_new="<<t_new[j]<< ", dt="<<dt << endl;
           cerr << "There could be various reasons for this" << endl;
@@ -921,7 +999,7 @@
     x_new.clear();
 
     for (i=0;i<t.size();i++) {
-      if (!isnan(x[i])) {
+      if (!std::isnan(x[i])) {
         t_new.push_back(t[i]);
         x_new.push_back(x[i]);
       }
@@ -940,7 +1018,7 @@
     //--- Count gaps    
     Ngaps=0;
     for (i=0;i<x.size();i++) {
-      if (isnan(x[i])) Ngaps++;
+      if (std::isnan(x[i])) Ngaps++;
     }
   }
 

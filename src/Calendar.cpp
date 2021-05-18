@@ -4,7 +4,7 @@
  * Since conversion between MJD and date is needed in DesignMatrix.cpp, I 
  * decided to create a new class with these subroutines. 
  *
- *  This script is part of Hector 1.7.2
+ *  This script is part of Hector 1.9
  *
  *  Hector is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,8 +23,11 @@
 //==============================================================================
   #include <cmath>
   #include <iostream>
+  #include <iomanip>
+  #include <sstream>
   #include <ostream>
   #include <cstdlib>
+  #include <string>
   #include "Calendar.h"
 
 //==============================================================================
@@ -144,3 +147,26 @@
 
     return MJD;
   }
+
+
+
+/* Convert Modified Julian Date to ISO-8601 date string
+ */
+//------------------------------------------------------------
+  void Calendar::MJD_to_ISO8601(double MJD, std::string& date)
+//------------------------------------------------------------
+  {
+    using namespace std;
+    int             year,month,day,hour,minute;
+    double          second;
+    ostringstream   ss;
+
+    compute_date(MJD,year,month,day,hour,minute,second);
+    ss << year << "-" 
+       << setw(2) << setfill('0') << month << "-" 
+       << setw(2) << setfill('0') << day << "T" 
+       << setw(2) << setfill('0') << hour << ":" 
+       << setw(2) << setfill('0') << minute << ":"
+       << setw(6) << setfill('0') << fixed << setprecision(3) << second << "Z";
+    date=ss.str(); 
+  }  

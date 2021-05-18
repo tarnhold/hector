@@ -4,7 +4,7 @@
  * The class that prepares the arrays before MLE can be computed using
  * AmmarGrag or FullCov.
  *
- *  This script is part of Hector 1.7.2
+ *  This script is part of Hector 1.9
  *
  *  Hector is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -150,10 +150,12 @@
     double         *error;
     DesignMatrix   *designmatrix=DesignMatrix::getInstance();
     Observations   &observations=Observations::getInstance();
+    JSON           &json=JSON::getInstance();
 
     using namespace std; 
     //---- Already show value of sigma_eta
     cout << "STD of the driving noise: " << sigma_eta << endl;
+    json.write_double("driving_noise",sigma_eta);
  
     error = new double[n];
     for (i=0;i<n;i++) error[i] = sigma_eta*sqrt(C_theta[i+n*i]);
@@ -226,7 +228,7 @@
     lnf_s     = 0.0;
     //--- Number of offsets follows poisson distribution, also need to be
     //    computed for zero offsets!
-    if (!isnan(beta_size)) {
+    if (!std::isnan(beta_size)) {
       observations.get_t0t1(t0,t1);
       offset_index = designmatrix->get_offset_index();
 
@@ -239,7 +241,7 @@
 
     lnf_theta = 0.0;
     //--- prior for size of offsets     
-    if (n_offsets>0 && !isnan(beta_spacing)) {
+    if (n_offsets>0 && !std::isnan(beta_spacing)) {
       for (j=0;j<n_offsets;j++) {
         lnf_theta += -fabs(theta[offset_index+j])/beta_size;
       }

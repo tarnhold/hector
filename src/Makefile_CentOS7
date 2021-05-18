@@ -1,0 +1,50 @@
+# Makefile for the hector-1.9 programs
+#
+#  This script is part of Hector 1.9
+#
+#  Hector is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  any later version.
+#
+#  Hector is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with Hector.  If not, see <http://www.gnu.org/licenses/>
+#
+#===============================================================================
+
+VERSION=1.9
+
+CPP      = g++
+CPPFLAGS = -O2 -fopenmp -std=c++11 -static -Wl,--allow-multiple-definition
+INC_DIR  = -I/opt/OpenBLAS/include/ -I/usr/include/lapacke/
+PREFIX   = /usr/local
+OPENBLAS = -lopenblas
+LIB_DIR  = -L/usr/lib64/ -lgomp -L/opt/OpenBLAS/lib -lpthread -ldl
+FFTW     = -lfftw3
+
+#--- Directory where programs will be installed
+BIN_DIR=$(PREFIX)/bin
+
+#--- convenient group names
+programs = estimatetrend modelspectrum estimatespectrum simulatenoise \
+	removeoutliers date2mjd mjd2date findoffset
+
+all : $(programs)
+
+clean:
+	rm -f *.o $(programs)
+
+install:
+	mkdir -p $(BIN_DIR)
+	install $(programs) $(BIN_DIR)
+
+uninstall :
+	@rm -f $(addprefix $(BIN_DIR)/,$(programs))
+
+
+include Makefile_common

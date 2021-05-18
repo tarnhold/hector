@@ -3,7 +3,7 @@
  *
  * Header file for NoiseModel.cpp
  *
- *  This script is part of Hector 1.7.2
+ *  This script is part of Hector 1.9
  *
  *  Hector is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -26,18 +26,15 @@
     #include "Control.h"
     #include "NoiseModelBaseClass.h"
     #include <fftw3.h>
-    #include <gsl/gsl_rng.h>
-    #include <gsl/gsl_randist.h>
-
-    extern "C" {
-      #include "cblas.h"
-      #include "clapack.h"
-    };
+    #include <boost/random.hpp>
+    #include <boost/random/normal_distribution.hpp>
+    #include "lapacke.h"
+    #include "cblas.h"
 
     class NoiseModel 
     {
       private:
-        const double         NaN,tpi;
+        const double         NaN,tpi,hpi;
         static bool          instanceFlag;
         static NoiseModel    *singleton;
         int                  Nparam,Nmodels,*NparamIndv;
@@ -46,8 +43,7 @@
         NoiseModelBaseClass  **modelIndv;
         fftw_complex         *F_h,*F_w;
         fftw_plan            plan_backward,plan_forward;
-        const gsl_rng_type   *T_random;
-        gsl_rng              *r_random;
+        boost::mt19937       rng;
 
         NoiseModel(void);
         ~NoiseModel(void);
@@ -68,6 +64,7 @@
         double  compute_G(double lambda);
         void    setup_MonteCarlo(int m);
         void    create_noise(int m, double *w);
+        void    set_sigma_fixed(double sigma_fixed_) {sigma_fixed=sigma_fixed_;}
     };
  
   #endif 

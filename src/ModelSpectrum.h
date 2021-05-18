@@ -3,7 +3,7 @@
  *
  * Header file for ModelSpectrum.cpp.
  *
- *  This script is part of Hector 1.7.2
+ *  This script is part of Hector 1.8
  *
  *  Hector is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -25,12 +25,16 @@
     #define __MODELSPECTRUM
     #include <complex>
     #include "NoiseModel.h"
+    #include "Spectrum.h"
 
     class ModelSpectrum
     {
       private:
+        int            n_simulations,m,ms,segments;
+        bool           montecarlo;
         const double   pi,tpi;
         double         fs,sigma,scale;
+        void           compute_confidence_levels(void);
 
       public:
         ModelSpectrum(void);

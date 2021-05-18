@@ -3,7 +3,7 @@
  *
  * Header file for Calendar.cpp
  *
- *  This script is part of Hector 1.7.2
+ *  This script is part of Hector 1.9
  *
  *  Hector is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -35,6 +35,7 @@
 				       int& hour, int& minute, double& second);
         double    compute_MJD(int year, int month, int day, int hour, 
 						    int minute, double second);
+        void      MJD_to_ISO8601(double MJD, std::string& date);
     };
 
   #endif

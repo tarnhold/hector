@@ -3,7 +3,7 @@
  *
  * This program estimates a trend from the observations.
  *
- *  This script is part of Hector 1.7.2
+ *  This script is part of Hector 1.9
  *
  *  Hector is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@
  */
 //=============================================================================
   #include "Minimizer.h"
+  #include "JSON.h"
   #include <iostream>
   #include <ostream>
   #include <cstdlib>
@@ -32,8 +33,8 @@
 
   int main(int argc, char *argv[])
   {
-    using namespace std;
 
+    using namespace std;
     //--- Open correct control file
     if (argc==1) {
       Control &control = Control::getInstance("estimatetrend.ctl");
@@ -44,11 +45,14 @@
       exit(EXIT_FAILURE);
     }
 
+    //--- JSON class instance
+    JSON    &json = JSON::getInstance("estimatetrend.json");
+
     //--- Start estimatetrend
     cout << endl 
          << "************************************" << endl 
-         << "    estimatetrend, version " << VERSION << "." << 
-         SUBVERSION << endl << "************************************" << endl;
+         << "    estimatetrend, version " << VERSION << endl
+         << "************************************" << endl;
 
     Minimizer      minimizer;
     time_t         start,end;

@@ -3,7 +3,7 @@
  *
  * Header file for Minimizer.cpp
  *
- *  This script is part of Hector 1.7.2
+ *  This script is part of Hector 1.9
  *
  *  Hector is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,9 +27,13 @@
     #include "Likelihood.h"
     #include "NoiseModel.h"
     #include "DesignMatrix.h"
-    #include <gsl/gsl_multimin.h>
-    #include <gsl/gsl_rng.h>
-    #include <gsl/gsl_randist.h>
+    #include "JSON.h"
+    #include "asa047.hpp"
+    #include <boost/random.hpp>
+    #include <boost/random/normal_distribution.hpp>
+
+    #include "cblas.h"
+    #include "lapacke.h"
 
     class Minimizer
     {
@@ -37,8 +41,6 @@
         int                  Nparam;
         double               *param,*error;
         bool                 randomise_first_guess;
-        const gsl_rng_type   *T_random;
-        gsl_rng              *r_random;
 
         void   fill_X(int k0, double s0, int k1, double s1, double *X);
         void   show_L_and_ICs(void);

@@ -1,0 +1,21 @@
+
+The Makefile is the one I use on my Macbook. I use Homebrew. Note that this
+installs 'casks'. The version is hard coded in the Makefile (see 0.3.13 below)
+and this is something to watch out for when you try to compile the code.
+
+Once you have homebrew and Xcode, install some packages:
+
+brew install fftw boost openblas libomp
+
+The correct flags are:
+
+VERSION=1.9
+
+CPP      = g++
+CPPFLAGS = -O2 -Xpreprocessor -fopenmp -std=c++1z 
+INC_DIR  = -I/usr/include/openblas/ -I/usr/local/Cellar/openblas/0.3.13/include/
+PREFIX   =/usr/local
+OPENBLAS = -lopenblas
+LIB_DIR  = -L/usr//local/Cellar/openblas/0.3.13/lib/ -lomp
+FFTW     = -lfftw3
+

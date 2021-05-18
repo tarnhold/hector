@@ -1,7 +1,7 @@
 /*! \filename RemoveOutliers.h
  *  \author   Machiel Bos
  *
- *  This script is part of Hector 1.7.2
+ *  This script is part of Hector 1.9
  *
  *  Hector is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,10 +23,10 @@
     #define REMOVEOUTLIERS__
     #include "Observations.h"
     #include "DesignMatrix.h"
-    extern "C" {
-      #include "cblas.h"
-      #include "clapack.h"
-    };
+    #include "JSON.h"
+    #include "Calendar.h"
+    #include "cblas.h"
+    #include "lapacke.h"
 
     class RemoveOutliers
     {

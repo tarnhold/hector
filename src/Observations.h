@@ -3,7 +3,7 @@
  *
  * Header file for Observations.cpp
  *
- *  This script is part of Hector 1.7.2
+ *  This script is part of Hector 1.9
  *
  *  Hector is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@
     #include <vector>
     #include <cstring>
     #include "Control.h"
+    #include "JSON.h"
 
     typedef struct {
       double  MJD,T;
@@ -42,17 +43,18 @@
     class Observations
     {
       private:
-        const double           NaN;
-        int                    Ngaps;
-        double                 fs,scale_factor;
-        bool                   PSMSL_monthly,interpolate_data;
-        void                   (Observations::*read_observations)(std::string 
+        const double             NaN;
+        int                      Ngaps;
+        double                   fs,scale_factor;
+        bool                     PSMSL_monthly,interpolate_data,subtract_signal;
+        void                     (Observations::*read_observations)(std::string 
 								     filename);
-        std::vector<double>    t,x,xhat,offsets,breaks;
-        std::vector<LogEntry>  postseismiclog;
-        std::vector<ExpEntry>  postseismicexp;
-        std::vector<TanhEntry> ssetanh;
-        std::string 	       extension;
+        std::vector<double>      t,x,xhat,offsets,breaks;
+        std::vector<std::string> signal;
+        std::vector<LogEntry>    postseismiclog;
+        std::vector<ExpEntry>    postseismicexp;
+        std::vector<TanhEntry>   ssetanh;
+        std::string 	         extension;
  
         Observations(void);
         void   read_header(std::fstream& fp, int component);

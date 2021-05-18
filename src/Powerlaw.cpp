@@ -5,7 +5,7 @@
  * noise. This class provides the power-law model. I switched to 
  * using d (=alpha/2) and phi.
  *
- *  This script is part of Hector 1.7.2
+ *  This script is part of Hector 1.9
  *
  *  Hector is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -53,10 +53,10 @@
 
     if (std::isnan(d_fixed_)==false) {
       estimate_spectral_index = false;
-      d_fixed = d_fixed_;
     } else {
       estimate_spectral_index = true;
     }
+    d_fixed = d_fixed_;
   }
 
 
@@ -111,6 +111,7 @@
   {
     double        d,phi,T;
     Observations  &observations=Observations::getInstance();
+    JSON          &json = JSON::getInstance();
 
     using namespace std;
     T = 1.0/(365.25*24.0*3600.0*observations.get_fs()); // T in yr
@@ -124,8 +125,19 @@
     cout << "sigma     = " << sigma/pow(T,0.5*d)
              		  << " " << unit << "/yr^" << 0.5*d << endl;
     cout << fixed << setprecision(4);
-    cout << "d         = " << d << " +/- " << error[0] << endl;
-    cout << "kappa     = " << -2*d << " +/- " << 2*error[0] << endl;
+    
+    if (estimate_spectral_index==true) {
+      cout << "d         = " << d << " +/- " << error[0] << endl;
+      cout << "kappa     = " << -2*d << " +/- " << 2*error[0] << endl;
+    } else {
+      cout << "d         = " << d << " +/- " << error[0] << " (fixed)"<< endl;
+      cout << "kappa     = " << -2*d << " +/- "<<2*error[0]<< " (fixed)"<< endl;
+    }
+
+    //--- Add info to JSON file
+    json.write_double("sigma",sigma/pow(T,0.5*d));
+    json.write_double("d",d);
+    json.write_double("kappa",-2.0*d);
   }
 
 
@@ -183,10 +195,9 @@
     using namespace std;
     if (estimate_spectral_index==true) {
       cout << "Enter value of fractional difference d:";
-      cin >> param_PSD[0];
-    } else {
-      param_PSD[0] = d_fixed;
+      cin >> d_fixed;
     }
+    param_PSD[0] = d_fixed;
  
     params_fixed[0] = param_PSD[0];
   }
@@ -218,7 +229,7 @@
     double  I;
 
     using namespace std;
-    if (estimate_spectral_index==true) {
+    if (estimate_spectral_index==true and std::isnan(d_fixed)==true) {
       cout << "Enter value of fractional difference d:";
       cin >> d_fixed;
     }

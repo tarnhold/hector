@@ -3,7 +3,7 @@
  *
  * Header file for HyperGeo.cpp
  *
- *  This script is part of Hector 1.7.2
+ *  This script is part of Hector 1.9
  *
  *  Hector is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,7 +24,6 @@
   #ifndef __HYPERGEO
     #define __HYPERGEO
     #include <complex>
-    #include <gsl/gsl_sf.h>
 
     class HyperGeo 
     {

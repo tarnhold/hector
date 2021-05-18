@@ -13,7 +13,7 @@
  * John Pearson (2009): "Computation of Hypergeometric Functions, Master 
  *        					Thesis, University of Oxford. 
  *
- *  This script is part of Hector 1.7.2
+ *  This script is part of Hector 1.9
  *
  *  Hector is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -68,20 +68,18 @@
 
 
 
-/*! A little wrapper to  gsl_sf_lngamma_complex_e
+/*! A little wrapper to boost:math:lgamma
  */
 //--------------------------------------------------------------
   std::complex<double> HyperGeo::lngamma(std::complex<double> z)
 //--------------------------------------------------------------
   {
     using namespace std;
-    gsl_sf_result    lnr,arg;
-    complex<double>  w;
-
-    gsl_sf_lngamma_complex_e(real(z),imag(z),&lnr,&arg);
-    w = complex<double>(lnr.val*cos(arg.val),lnr.val*sin(arg.val));  
-
-    return w;
+    if (fabs(imag(z)>1.0e-9)) {
+      cerr << "z has non-zero imaginary part: " << z << endl;
+      exit(EXIT_FAILURE);
+    }  
+    return complex<double>(lgamma(real(z)));
   }
 
 
@@ -115,7 +113,8 @@
       b1[i] = b1[i-1]*(a+I-2.0)*(b+I-2.0)*z;
       c1[i] = c1[i-1]*(I-1.0)*(c+I-2.0);
 
-      if (isinf(abs(a1[i])) || isinf(abs(b1[i])) || isinf(abs(c1[i]))) {
+      if (std::isinf(abs(a1[i])) || std::isinf(abs(b1[i])) || std::
+							isinf(abs(c1[i]))) {
         throw "HyperGeo::singlefraction2F1 - a1,b1,c1 become infinite";
         return NAN;
       } 

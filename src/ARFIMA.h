@@ -3,7 +3,7 @@
  *
  * Header file for ARFIMA.cpp
  *
- *  This script is part of Hector 1.7.2
+ *  This script is part of Hector 1.9
  *
  *  Hector is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,18 +28,15 @@
     #include "Control.h"
     #include "NoiseModelBaseClass.h"
     #include "HyperGeo.h"
-
-    extern "C" {
-      #include "cblas.h"
-      #include "clapack.h"
-    };
+    #include "Polynomial.h"
 
     class ARFIMA : public NoiseModelBaseClass
     {
       private:
+        const double         NaN;
         bool                 estimate_spectral_index;
         int                  p,q,Nparam;
-        double               d_PSD,*psi_PSD,d_fixed;
+        double               d_PSD,*psi_PSD,d_fixed,*AR_fixed,*MA_fixed;
         std::complex<double> *rho_PSD;
         std::string          unit;
         void                 compute_psi(double *MA, double *psi);

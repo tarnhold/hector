@@ -4,7 +4,7 @@
  *  Implementation of the ARFIMA noise model using the tricks of Sowell (1992),
  *  Doornik and Ooms (2003) and Zinde-Wash (1988).
  *
- *  This script is part of Hector 1.7.2
+ *  This script is part of Hector 1.9
  *
  *  Hector is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,7 +22,6 @@
  */
 //=============================================================================
   #include "ARFIMA.h"
-  #include <gsl/gsl_poly.h>
   #include <cmath>
   #include <math.h>
   #include <iostream>
@@ -42,10 +41,11 @@
  *
  * \param[in] d_fixed_  fractional noise parameter
  */
-//---!!--------------------------
-  ARFIMA::ARFIMA(double d_fixed_)
-//---!!--------------------------
+//---!!--------------------------------------------
+  ARFIMA::ARFIMA(double d_fixed_) : NaN(sqrt(-1.0))
+//---!!--------------------------------------------
   {
+    int       i;
     Control   &control = Control::getInstance();
 
     using namespace std;
@@ -63,13 +63,25 @@
     //--- See if we need to set d to zero, creating an ARMA model. In theory
     //    we can set d to any value between -0.5 and 0.5 but only 0 makes
     //    practical sense.
-    if (isnan(d_fixed_)==false) {
+    if (std::isnan(d_fixed_)==false) {
       estimate_spectral_index = false;
-      d_fixed = d_fixed_;
       Nparam  = p+q; // include 'd' in the counting of parameters
     } else {
       estimate_spectral_index = true;
       Nparam  = p+q+1; // include 'd' in the counting of parameters
+    }
+    d_fixed = d_fixed_;
+
+    //--- I need to remember if AR and MA coefficients have been set
+    if (p==0) AR_fixed=NULL; 
+    else {
+      AR_fixed = new double[p];
+      for (i=0;i<p;i++) AR_fixed[i]=NaN;
+    }
+    if (q==0) MA_fixed=NULL; 
+    else {
+      MA_fixed = new double[q];
+      for (i=0;i<q;i++) MA_fixed[i]=NaN;
     }
 
 #ifdef DEBUG
@@ -89,6 +101,8 @@
   {
     if (psi_PSD!=NULL)   delete[] psi_PSD;
     if (rho_PSD!=NULL)   delete[] rho_PSD;
+    if (AR_fixed!=NULL)  delete[] AR_fixed;
+    if (MA_fixed!=NULL)  delete[] MA_fixed;
   }
 
 
@@ -103,11 +117,14 @@
   void ARFIMA::find_roots(double *AR, std::complex<double> *rho)
 //--------------------------------------------------------------
   {
-     int                         i;
-     double                      roots[2*p],coeff[p+1];
-     gsl_poly_complex_workspace  *w;
-    
      using namespace std;
+     int                         i,root_count=0;
+     double                      coeff[p+1];
+     Polynomial                  poly;
+     vector<double>              real_vector;
+     vector<double>              imag_vector;
+     
+    
      if (p==0) {
        rho = NULL;
      } else if (p==1) {
@@ -116,27 +133,33 @@
        //--- find roots  
        coeff[0] = 1.0;
        for (i=0;i<p;i++) coeff[1+i] = -AR[i];
-       if (fabs(coeff[p])<TINY) {
-         w = gsl_poly_complex_workspace_alloc (p);
-         gsl_poly_complex_solve (coeff, p, w, roots);
-       } else {
-         w = gsl_poly_complex_workspace_alloc (p+1);
-         gsl_poly_complex_solve (coeff, p+1, w, roots);
-       }
-     
+   
+       //--- Alternative method not based on GSL
+       poly.SetCoefficients(coeff,p);
+
+       real_vector.resize(p);
+       imag_vector.resize(p);
+
+       double * real_vector_ptr = &real_vector[0];
+       double * imag_vector_ptr = &imag_vector[0];
+
+       if (poly.FindRoots(real_vector_ptr,imag_vector_ptr,
+                               &root_count) != PolynomialRootFinder::SUCCESS) {
+         cerr << "Could not find root of polynomial" << endl;
+         exit(EXIT_FAILURE); 
+       } 
+         
        for (i=0;i<p;i++) {
          if (i==p-1 && fabs(coeff[p])<TINY) {
            rho[i] = 0.0;
          } else {
-           rho[i] = 1.0/complex<double>(roots[2*i],roots[2*i+1]);
+           rho[i] = 1.0/complex<double>(real_vector_ptr[i],imag_vector_ptr[i]);
          }
          //--- In earlier versions I checked if size of rho[i] was smaller
          //    than 1 to see if stationanity condition was met. However,
          //    this happens sometimes during the minimalisation search and
          //    is taken care of by the penalty function.
        }
-       //--- free memory
-       gsl_poly_complex_workspace_free (w);
      }
   }
 
@@ -295,21 +318,34 @@
 
 
 /*! Compute psi of Doornik and Ooms out of the MA coefficients
+ * 
+ * 12/8/2020 This is all equation (5) of Sowell. His summation is not clear 
+ * but my implementation makes sense. The PSD is (1 + theta_1 + theta_2 + ..)^2
+ * Thus, the summation simply collects terms for each degree. degree 0:
+ * 1 + theta_1^2 + theta_2^2, degree 1 theta_0*theta_1 + theta_1*theta2 ....
+ * Another trick is that the polynomial is for e^(i\omega). To be precise,
+ * it is not the square of the polynomial but multiplied with its conjugate.
+ * This results in having only a cosine in the end...
+ *
+ * Note psi ranges from -q to q. Do not change this when trying to simply
+ * matters because psi[-l]==psi[l]. When I compute gamma_x I use the 
+ * Sowell equation which needs also the negative terms.
  */
 //-------------------------------------------------
   void ARFIMA::compute_psi(double *MA, double *psi)
 //-------------------------------------------------
   {
-    int     i,j,k;
+    int     i,j,l,j0,j1;
     double  *theta;
 
+    using namespace std;
     theta = new double[q+1];
     theta[0] = 1.0;
     for (i=0;i<q;i++) theta[i+1]=MA[i];
-    for (k=-q;k<=q;k++) {
-      psi[k+q] = 0.0;
-      for (j=abs(k);j<=q;j++) {
-        psi[k+q] += theta[j]*theta[j-abs(k)];
+    for (l=-q;l<=q;l++) {
+      psi[l+q] = 0.0;
+      for (j=0;j<=q-abs(l);j++) {
+        psi[l+q] += theta[j]*theta[j+abs(l)];
       }
     }
     delete[] theta;
@@ -507,10 +543,12 @@
   void ARFIMA::show(double *param, double *error, double sigma)
 //-------------------------------------------------------------
   {
-    int  i;
+    int    i;
+    JSON   &json = JSON::getInstance();
 
     using namespace std;
     cout << "sigma     = " << sigma << " " << unit << endl;
+    json.write_double("sigma",sigma);
 
     for (i=0;i<Nparam;i++) {
       if (i<p) {
@@ -521,6 +559,12 @@
         printf("d     = %8.4lf +/- %6.4lf\n",param[i],error[i]);
       }
     }
+    
+    //--- add to JSON
+    json.write_double_list("AR",p,&param[0]);
+    json.write_double_list("MA",q,&param[p]);
+    if (Nparam>p+q) json.write_double("d",param[p+q]);
+    else            json.write_double("d",0.0);
   }
 
 
@@ -603,12 +647,12 @@
     for (i=0;i<p;i++) {
       cout << "Enter parameter value of AR[" << i+1 << "]: ";
       cin >> AR[i];
-      params_fixed[i] = AR[i];
+      params_fixed[i] = AR_fixed[i] = AR[i];
     }
     for (i=0;i<q;i++) {
       cout << "Enter parameter value of MA[" << i+1 << "]: ";
       cin >> MA[i];
-      params_fixed[p+i] = MA[i];
+      params_fixed[p+i] = MA_fixed[i] = MA[i];
     }
     if (estimate_spectral_index==true) {
       cout << "Enter fractional difference value of d: ";
@@ -640,10 +684,11 @@
     complex<double>  dummyC;
     double           G,dummy;
 
+    using namespace std;
     //--- Compute MA part
-    dummy = psi_PSD[0];
+    dummy = psi_PSD[q+0];
     for (i=1;i<=q;i++) {
-      dummy += 2.0*psi_PSD[i]*cos(static_cast<double>(i)*lambda);
+      dummy += 2.0*psi_PSD[q+i]*cos(static_cast<double>(i)*lambda);
     }
     G = dummy;
 
@@ -685,14 +730,22 @@
 
     //--- Ask for noise parameter values
     for (i=0;i<p;i++) {
-      cout << "Enter parameter value of AR[" << i+1 << "]: ";
-      cin >> AR[i];
+      if (std::isnan(AR_fixed[i])==true) {
+        cout << "Enter parameter value of AR[" << i+1 << "]: ";
+        cin >> AR[i];
+      } else {
+        AR[i] = AR_fixed[i];
+      }
     }
     for (i=0;i<q;i++) {
-      cout << "Enter parameter value of MA[" << i+1 << "]: ";
-      cin >> MA[i];
+      if (std::isnan(MA_fixed[i])==true) {
+        cout << "Enter parameter value of MA[" << i+1 << "]: ";
+        cin >> MA[i];
+      } else {
+        MA[i] = MA_fixed[i];
+      }
     }
-    if (estimate_spectral_index==true) {
+    if (estimate_spectral_index==true and std::isnan(d_fixed)) {
       cout << "Enter value of fractional difference d:";
       cin >> d_fixed;
     }

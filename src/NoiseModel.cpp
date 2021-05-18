@@ -4,7 +4,7 @@
  * Main interface to various stationary noise model implementations. It 
  * allows the combination of various noise models.
  *
- *  This script is part of Hector 1.7.2
+ *  This script is part of Hector 1.9
  *
  *  Hector is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,6 +27,8 @@
   #include "PowerlawApprox.h"
   #include "ARFIMA.h"
   #include "GenGaussMarkov.h"
+  #include "Matern.h"
+  #include "VaryingPeriodic.h"
   #include <sys/types.h>
   #include <iostream>
   #include <iostream>
@@ -36,6 +38,7 @@
   #include <cstdio>
   #include <unistd.h>
   #include <cstring>
+  #include <boost/nondet_random.hpp>
 
   //  #define DEBUG
 
@@ -44,12 +47,14 @@
 //=============================================================================
 
 
-//--!!---------------------------------------------
+//--!!----------------------------------------------
   NoiseModel::NoiseModel(void) : NaN(sqrt(-1.0)),
-				 tpi(8.0*atan(1.0))
-//--!!---------------------------------------------
+				 tpi(8.0*atan(1.0)),
+				 hpi(2.0*atan(1.0))
+//--!!----------------------------------------------
   {
     using namespace std;
+    double   d_fixed;
     int      i;
     long     seed;
     Control  &control = Control::getInstance();
@@ -82,26 +87,29 @@
    
     //--- Avoid problems, set h to NULL 
     h = NULL;
+    for (i=0;i<Nmodels;i++) fraction_fixed[i] = NaN;
+    sigma_fixed = NaN;
  
-    //--- create a generator chosen by the environment variable GSL_RNG_TYPE
-    gsl_rng_env_setup();
-     
-    //--- Initiate random generator
-    T_random = gsl_rng_default;
-    r_random = gsl_rng_alloc (T_random);
-    seed     = time (NULL) * getpid();
-    gsl_rng_set (r_random, seed);
-
-    printf ("generator type: %s\n", gsl_rng_name (r_random));
-    printf ("seed = %lu\n", gsl_rng_default_seed);
-    printf ("first value = %lu\n", gsl_rng_get (r_random));
-
     //--- Create all necessary classes
     for (i=0;i<Nmodels;i++) {
       if (noisemodel[i].compare("White")==0) {
         modelIndv[i] = new White;
       } else if (noisemodel[i].compare("Powerlaw")==0) {
-        modelIndv[i] = new Powerlaw();
+        try {
+          d_fixed = -0.5*control.get_double("kappa_fixed");
+          modelIndv[i] = new Powerlaw(d_fixed);
+        }
+        catch (exception &e) {
+          modelIndv[i] = new Powerlaw();
+        }
+      } else if (noisemodel[i].compare("Matern")==0) {
+        try {
+          d_fixed = -0.5*control.get_double("kappa_fixed");
+          modelIndv[i] = new Matern(d_fixed);
+        }
+        catch (exception &e) {
+          modelIndv[i] = new Matern(NaN);
+        }
       } else if (noisemodel[i].compare("Flicker")==0) {
         modelIndv[i] = new Powerlaw(0.5);
       } else if (noisemodel[i].compare("RandomWalk")==0) {
@@ -112,12 +120,22 @@
         modelIndv[i] = new GenGaussMarkov(1.0);
       } else if (noisemodel[i].compare("PowerlawApprox")==0) {
         modelIndv[i] = new PowerlawApprox;
+      } else if (noisemodel[i].compare("VaryingAnnual")==0) {
+        modelIndv[i] = new VaryingPeriodic(365.25);
+      } else if (noisemodel[i].compare("VaryingSemiAnnual")==0) {
+        modelIndv[i] = new VaryingPeriodic(182.625);
       } else if (noisemodel[i].compare("ARFIMA")==0) {
         modelIndv[i] = new ARFIMA();
       } else if (noisemodel[i].compare("ARMA")==0) {
         modelIndv[i] = new ARFIMA(0.0);
       } else if (noisemodel[i].compare("GGM")==0) {
-        modelIndv[i] = new GenGaussMarkov(NaN);
+        try {
+          d_fixed = -0.5*control.get_double("kappa_fixed");
+          modelIndv[i] = new GenGaussMarkov(d_fixed);
+        }
+        catch (exception &e) {
+          modelIndv[i] = new GenGaussMarkov(NaN);
+        }
       } else {
         cerr << "Unknown noise model: " << noisemodel[i] << endl;
         exit(EXIT_FAILURE);
@@ -155,7 +173,6 @@
       delete[] phi;
       delete[] fraction_fixed;
     }
-    gsl_rng_free (r_random);
   }
 
 
@@ -175,8 +192,8 @@
       return 1.0;
     } else {
       fraction=1.0;
-      for (j=0;j<i;j++)  fraction *= sin(tpi*param[j]);
-      if (i<Nmodels-1)   fraction *= cos(tpi*param[i]);
+      for (j=0;j<i;j++)  fraction *= sin(hpi*param[j]);
+      if (i<Nmodels-1)   fraction *= cos(hpi*param[i]);
  
       //--- Some range checks
       if (fraction>1.0) fraction=1.0;
@@ -244,15 +261,22 @@
     int           i,j,k;
     double        fraction,d,T;
     Observations  &observations=Observations::getInstance();
+    JSON          &json = JSON::getInstance();
 
     using namespace std;
-    cout << endl;
+    cout << endl << "Noise models" << endl << "------------" << endl;
+
+    //--- Start adding noise models in JSON file
+    json.start_dictionary("NoiseModel");
 
     //--- Get some information on sigma_eta and sampling period
     T = 1.0/(365.25*24.0*3600.0*observations.get_fs()); // T in yr
     k = Nmodels-1;
     for (i=0;i<Nmodels;i++) {
-      
+     
+      //--- start dictionary 
+      json.start_dictionary(noisemodel[i]);
+
       //--- Compute fraction and show it
       fraction = compute_fraction(i,param);
       cout << noisemodel[i] << ":" << endl 
@@ -262,9 +286,19 @@
       modelIndv[i]->show(&param[k],&error[k],sigma_eta*sqrt(fraction));
       cout << endl;
 
+      //--- Write fraction as last item for noise model in JSON file
+      json.write_double("fraction",fraction,true);
+
       //--- move pointer in param-array
       k += NparamIndv[i];
+
+      //--- end dictionary 
+      if (i<Nmodels-1) json.end_dictionary(false);
+      else             json.end_dictionary(true);
     }
+
+    //--- No more noise models to add in JSON file
+    json.end_dictionary(false);
   }
 
 
@@ -367,11 +401,15 @@
 
     using namespace std;
     //--- Ask user about the driving white noise and the fractions
-    cout << "Enter sigma of driving white noise: ";
-    cin >> sigma_fixed;
+    if (std::isnan(sigma_fixed)==true) {
+      cout << "Enter sigma of driving white noise: ";
+      cin >> sigma_fixed;
+    }
     for (i=0;i<Nmodels;i++) {
-      cout << "Enter fraction for model " << noisemodel[i] << ": ";
-      cin >> fraction_fixed[i];
+      if (std::isnan(fraction_fixed[i])==true) {
+        cout << "Enter fraction for model " << noisemodel[i] << ": ";
+        cin >> fraction_fixed[i];
+      }
     }
  
     //--- Allocate memory to hold impulse function and its Fourier transform
@@ -418,12 +456,14 @@
     //--- Nicely start with zeros
     memset(y,0,m*sizeof(double));
 
+    //--- create a random number generator
+    boost::normal_distribution<double> gen(0.0, 1.0);
+
     using namespace std;
     nyc = 2*m/2 + 1;
     for (i=0;i<Nmodels;i++) {
       memset(&w[m],0,m*sizeof(double)); //--- zero padding of last m entries
-      for (j=0;j<m;j++) w[j] = gsl_ran_gaussian(r_random,1.0);
-      cout << "fraction " << i << "=" << fraction_fixed[i] << endl;
+      for (j=0;j<m;j++) w[j] = gen(rng);
       fftw_execute_dft_r2c(plan_forward,w,F_w);
 
       //--- Compute F_h*F_w in frequency domain

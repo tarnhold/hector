@@ -9,7 +9,7 @@
  * called once because the program is only meant to analyse one station.
  * Therefore, there is no need to make this class a Singleton.
  *
- *  This script is part of Hector 1.7.2
+ *  This script is part of Hector 1.9
  *
  *  Hector is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -80,13 +80,13 @@
  * with singletons which get their information independently when they are
  * created.
  */
-//---------------------------------------------
-  double my_f(const gsl_vector *v, void *dummy)
-//---------------------------------------------
+//---------------------------
+  double my_f(double *param_)
+//---------------------------
   {
      Likelihood    &likelihood=Likelihood::getInstance();
 
-     return likelihood.compute(v->data);
+     return likelihood.compute(param_);
   }
     
 
@@ -103,19 +103,20 @@
 //---------------------------
   {
     int           i;
-    double        sigma_eta,ln_det_C,*theta=NULL,FTOL=1.0e-7;
+    double        sigma_eta,ln_det_C,*theta=NULL;
     NoiseModel    &noisemodel  = NoiseModel::getInstance();
     Likelihood    &likelihood  = Likelihood::getInstance();
 
-    //--- GSL minimizer variables
-    const gsl_multimin_fminimizer_type *T = gsl_multimin_fminimizer_nmsimplex2;
-    gsl_multimin_fminimizer            *s = NULL;
-    gsl_vector                         *ss, *x;
-    gsl_multimin_function              minex_func;
-    size_t                             iter = 0;
-    int                                status;
-    long                               seed;
-    double                             size,w;
+    //--- Nelder & Mead variables
+    double        *step,*start,*xmin,ynewlo,reqmin=1.0e-15;
+    int           kconvge=10,kcount=1000,ifault,numres,icount;
+    long          seed;
+    double        size,w;
+
+    //--- Allocate memory for arrays
+    step  = new double[Nparam];
+    start = new double[Nparam];
+    xmin  = new double[Nparam];
 
     using namespace std;
     //--- Check if simple ordinary least-squares is required
@@ -136,69 +137,39 @@
       //--- Find minimum using Nelder-Mead Simplex method ---------
 
       //--- Initiate random generator
-      T_random = gsl_rng_default;
-      r_random = gsl_rng_alloc (T_random);
-      seed     = time (NULL) * getpid();
-      gsl_rng_set (r_random, seed);
+      boost::random::mt19937 rng;
+      boost::random::uniform_real_distribution<double> gen(0.0, 0.25);
 
       //--- Starting point 
-      x = gsl_vector_alloc (Nparam);
       for (i=0;i<Nparam;i++) {
         if (randomise_first_guess==true) {
-          w = gsl_ran_flat(r_random,0.0,0.25);
-          gsl_vector_set (x, i, 0.04 + w);
+          w = gen(rng);
+          start[i] = 0.04 + w;
         } else {
-          gsl_vector_set (x, i, 0.1);
+          start[i] = 0.10;
         }
+        step[i] = 0.3;
       }
-      gsl_rng_free (r_random);
- 
-      //--- Set initial step sizes to 0.3 
-      ss = gsl_vector_alloc (Nparam);
-      gsl_vector_set_all (ss, 0.3);
-     
-      //--- Initialize method and iterate 
-      minex_func.n = Nparam;
-      minex_func.f = &my_f;
-      minex_func.params = NULL;
-     
-      s = gsl_multimin_fminimizer_alloc (T, Nparam);
-      gsl_multimin_fminimizer_set (s, &minex_func, x, ss);
 
-      do {
-        iter++;
-        status = gsl_multimin_fminimizer_iterate(s);
-           
-        if (status) 
-          break;
-     
-        size = gsl_multimin_fminimizer_size (s);
-        status = gsl_multimin_test_size (size, FTOL);
-     
-        if (status == GSL_SUCCESS) {
-          printf ("converged to minimum at\n");
-        }
-     
-        printf ("%5zd",iter);
-        for (i=0;i<Nparam;i++) {
-          printf("%11.5f ",gsl_vector_get(s->x,i));
-        }
-        printf("  f()= %10.6f  size=%.3f\n",s->fval, size);
-      } while (status == GSL_CONTINUE && iter < 1500);
-
-      //--- Sanity check    
-      if (iter==500) {
-        cerr << "Did not converge!!" << endl;
-        exit(EXIT_FAILURE);
+      //--- Call Nelder & Mead
+      nelmin(my_f,Nparam,start,xmin,&ynewlo,reqmin,step,kconvge,kcount,
+						   &icount,&numres,&ifault);
+      printf ("%5d",icount);
+      for (i=0;i<Nparam;i++) {
+        printf("%11.5f ",xmin[i]);
       }
- 
+      cout << "\n";
+      cout << "  Return code IFAULT = " << ifault << "\n";
+      cout << "\n";
+      cout << "  Estimate of minimizing value X*:\n";
+      cout << "  F(X*) = " << ynewlo << "\n";
+      cout << "\n";
+      cout << "  Number of iterations = " << icount << "\n";
+      cout << "  Number of restarts =   " << numres << "\n";
+
       //--- save minimum
-      for (i=0;i<Nparam;i++)   param[i] = gsl_vector_get(s->x,i);
+      for (i=0;i<Nparam;i++)   param[i] = xmin[i];
   
-      gsl_vector_free(x);
-      gsl_vector_free(ss);
-      gsl_multimin_fminimizer_free (s);
-
       //--- Compute confidence intervals for noise parameters. This sets
       //    the values for the error-array used later in noisemode->show.
       compute_confidence_intervals(param);
@@ -210,6 +181,10 @@
 
     //--- Show results of least-squares
     likelihood.show_leastsquares();
+
+    delete[] start;
+    delete[] step;
+    delete[] xmin;
   }
 
 
@@ -262,6 +237,7 @@
     double          *H,ln_L,ln_det_I,AIC,BIC,BIC_tp,BIC_c;
     DesignMatrix    *designmatrix = DesignMatrix::getInstance();
     Likelihood      &likelihood = Likelihood::getInstance();
+    JSON            &json = JSON::getInstance();
  
     //--- How many parameters are estimated? 
     designmatrix->get_H(n,&H);
@@ -284,6 +260,14 @@
     cout << "BIC_tp    =" << BIC_tp << endl;
     cout << "BIC_c     =" << BIC_c << endl;
     cout << "ln_det_I  =" << ln_det_I << endl;
+
+    //--- Add to JSON file
+    json.write_double("ln_L",ln_L);
+    json.write_double("AIC",AIC);
+    json.write_double("BIC",BIC);
+    json.write_double("BIC_tp",BIC_tp);
+    json.write_double("BIC_c",BIC_c);
+    json.write_double("ln_det_I",ln_det_I);
 
     //--- free memory
     delete[] H;
@@ -340,8 +324,8 @@
     }
 
     //--- Invert matrix
-    clapack_dpotrf(CblasColMajor,CblasUpper,Nparam,C,Nparam);
-    clapack_dpotri(CblasColMajor,CblasUpper,Nparam,C,Nparam);
+    dpotrf_(&Up,&Nparam,C,&Nparam,&info);
+    dpotri_(&Up,&Nparam,C,&Nparam,&info);
 
     //--- Put optimum back in memory in Likelihood class
     lnL_min = likelihood.compute(param);

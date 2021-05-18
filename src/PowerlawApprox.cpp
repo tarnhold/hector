@@ -10,7 +10,7 @@
  * last observed epoch. The column and row of the covariance matrix for the
  * last epoch is used to create a Toeplitz matrix, see Bos et al. (2013).
  *
- *  This script is part of Hector 1.7.2
+ *  This script is part of Hector 1.9
  *
  *  Hector is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -50,7 +50,7 @@
 
     using namespace std;
     //--- Check if we need to estimate the spectral index or not
-    if (isnan(d_fixed_)==false) {
+    if (std::isnan(d_fixed_)==false) {
       estimate_spectral_index = false;
       d_fixed = d_fixed_;
     } else {
@@ -192,6 +192,7 @@
   {
     double        d,T;
     Observations  &observations=Observations::getInstance();
+    JSON          &json = JSON::getInstance();
 
     using namespace std;
     T = 1.0/(365.25*24.0*3600.0*observations.get_fs()); // T in yr
@@ -207,6 +208,11 @@
     cout << fixed << setprecision(4); 
     cout << "d         = " << d << " +/- " << error[0] << endl;
     cout << "kappa     = " << -2*d << " +/- " << 2*error[0] << endl;
+
+    //--- Add to JSON file
+    json.write_double("sigma",sigma/pow(T,0.5*d));
+    json.write_double("d",d);
+    json.write_double("kappa",-2.0*d);
   }
 
 

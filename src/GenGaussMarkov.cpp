@@ -4,7 +4,7 @@
  * This class implements the Generalized Gauss-Markov noise model that is
  * preferred by John Langbein and Simon Williams.
  *
- *  This script is part of Hector 1.7.2
+ *  This script is part of Hector 1.9
  *
  *  Hector is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,11 +22,15 @@
  */
 //==============================================================================
   #include "GenGaussMarkov.h"
+  #include <boost/math/special_functions/next.hpp>
+  #include <boost/math/special_functions/hypergeometric_pFq.hpp>
+  #include <boost/multiprecision/cpp_int.hpp> 
+  #include <boost/multiprecision/cpp_bin_float.hpp> 
   #include <iostream>
   #include <ostream>
 
-  #define TINY 1.0e-12
-//  #define DEBUG
+  #define TINY 1.0e-15
+  #define DEBUG
 
 //==============================================================================
 // Subroutines
@@ -34,7 +38,7 @@
 
 
 //---!!------------------------------------------
-  GenGaussMarkov::GenGaussMarkov(double d_fixed_)
+  GenGaussMarkov::GenGaussMarkov(double d_fixed_) : NaN(sqrt(-1.0))
 //---!!------------------------------------------
   {
     Control  &control=Control::getInstance();
@@ -49,11 +53,12 @@
       exit(EXIT_FAILURE);
     }
 
-    if (isnan(d_fixed)==false) {
+    if (std::isnan(d_fixed)==false) {
       //--- If we set d fixed, then phi is automatically fixed too. The idea
       //    is to have a small value so that the power-law does not flatten 
       //    out too soon.
       try {
+        //--- phi is actually stored as 1-phi (confusing...)
         phi_fixed = control.get_double("GGM_1mphi");
       }
       catch (exception &e) {
@@ -65,72 +70,24 @@
       Nparam = 0;
     } else {
       try {
+        //--- phi is actually stored as 1-phi (confusing...)
         phi_fixed = control.get_double("GGM_1mphi");
         Nparam = 1;
       }
       catch (exception &e) {
+        phi_fixed = NaN;
         Nparam = 2;
       }
     }
   }
 
-
-/*! Use summation of Lopez and Temme to compute 2F1 near z=1
- *
- * Reference: New Series Expansions of the Gauss Hypergeometric Function
- *
- * Note that this only saves a factor of 2, not overly impressive. The
- * Aitken's delta-squared process saves another factor 2.
- */
-//-------------------------------------------------------------------------
-  double GenGaussMarkov::hyperg_2F1(double a, double b, double c, double z)
-//-------------------------------------------------------------------------
-  {
-    long double   phi0,phi1,phi2,frac1,frac2,s0,s1,s2,n,t_old,t_new;
-
-    using namespace std;
-    phi0 = 1.0;
-    phi1 = 1.0 - 2.0*b/c;
-
-    frac1 = a;
-    frac2 = z/(z-2.0);
-
-    s0 = 1.0;
-    s1 = 1.0 + frac1*frac2*phi1;
-
-    n = 2.0;
-    t_old =  9.e99;
-    t_new = -9.e99;
-    while (abs((t_new-t_old)/t_new)>TINY) {
-      t_old  = t_new;
-
-      frac1 *= (a+n-1.0)/n;
-      frac2 *= z/(z-2.0);
-
-      phi2   = (c-2.0*b)/(c+n-1.0)*phi1 + (n-1.0)/(c+n-1.0)*phi0;
-      s2    =  s1 + frac1*frac2*phi2;
-
-      //--- Apply Aitken's delta-squared process
-      t_new = s0 - (s1-s0)*(s1-s0)/(s2-2.0*s1+s0);
-
-      //--- Prepare next round
-      phi0  = phi1;
-      phi1  = phi2;
-      s0    = s1;
-      s1    = s2;
-      n    += 1.0;
-    }
-
-    return t_new*pow(1.0 - z/2.0,-a);
-  }
-
-
+ 
 
 /*! Compute backward recursion
  */
 //--------------------------------------------------------------------------
   double GenGaussMarkov::backward(double a, double b, double c, 
-					     double z, double F, double Fp1)
+                                             double z, double F, double Fp1)
 //--------------------------------------------------------------------------
   {
     return ((1.0-c+(b-a)*z)*F + (a*(c-b)*z)*Fp1/c)/(1.0-c);
@@ -145,18 +102,21 @@
 //--------------------------------------------------------------------------
   {
     using namespace std;
-    int          i,k;
-    double       scale,tau,phi,a,b,c,d,z,*_2F1=NULL,Fm1,F,Fp1;
+    int              i,k;
+    double           scale,tau,phi,a,b,c,d,z,*_2F1=NULL,Fm1,F,Fp1;
 
     //--- extract parameters to readable variables
     if (Nparam==0) {
       d   = d_fixed;
+      //--- phi is actually stored as 1-phi (confusing...)
       phi = phi_fixed;
     } else if (Nparam==1) {
       d   = param[0];
+      //--- phi is actually stored as 1-phi (confusing...)
       phi = phi_fixed;
     } else {
       d   = param[0];
+      //--- phi is actually stored as 1-phi (confusing...)
       phi = param[1];
     }
 
@@ -170,6 +130,12 @@
 
     //--- For phi=0, we have pure power-law noise
     if (fabs(phi*phi)<TINY) {
+      if (d>0.75) {
+        cerr << "kappa is smaller than -1.5 (" << -2.0*d << ") which is "
+             << " non-stationary. Cannot use this formula." << endl;
+        cerr << "1-phi: " << phi << endl;
+        exit(EXIT_FAILURE);
+      } 
       gamma_x[0] = tgamma(1.0-2.0*d)/pow(tgamma(1.0-d),2.0);
                                         
       for (i=0;i<m-1;i++) {
@@ -183,15 +149,17 @@
       if (fabs(d)<TINY) {
         for (i=0;i<m;i++) _2F1[i] = 1.0;
       } else {
+        //--- Since phi is actually stored as 1-phi, I here need to
+        //    put 1- (1-phi) = phi. DONT DELETE THIS COMMENT!!!
         z       = pow(1-phi,2.0);
         k        = m-1;
         b        = d;
         a        = d   + static_cast<double>(k);
         c        = 1.0 + static_cast<double>(k);
-        _2F1[m-1]= hyperg_2F1(b,a,c,z);
+        _2F1[m-1]= boost::math::hypergeometric_pFq( {a,b}, {c}, z);
         a       -= 1.0;
         c       -= 1.0;
-        _2F1[m-2]= hyperg_2F1(b,a,c,z);
+        _2F1[m-2]= boost::math::hypergeometric_pFq( {a,b}, {c}, z);
 
         Fp1   = _2F1[m-1];
         F     = _2F1[m-2];
@@ -210,20 +178,14 @@
       for (i=0;i<m;i++) {
         gamma_x[i] = scale*_2F1[i];
         scale     *= (d+i)*(1.0-phi)/(i+1.0);
-        if (isnan(gamma_x[i])) {
+        if (std::isnan(gamma_x[i])) {
           cout << "Trouble in paradise!" << endl;
           cout << "i=" << i << ", d=" << d << ", 1-phi=" << phi << endl;
           exit(EXIT_FAILURE);
         }
       }
-
     } 
         
-#ifdef DEBUG
-    cout << "d=" << d << ", 1-phi=" << phi << endl;
-    for (i=0;i<m;i++) cout << "i=" << i << ", 2F1[i]=" << _2F1[i] << endl;
-#endif
-
     //--- Clean up memory
     if (_2F1!=NULL) delete[] _2F1;
   }
@@ -238,28 +200,42 @@
   {
     double        d,T;
     Observations  &observations=Observations::getInstance();
+    JSON          &json = JSON::getInstance();
 
     using namespace std;
     T = 1.0/(365.25*24.0*3600.0*observations.get_fs()); // T in yr
 
-    if (isnan(d_fixed)) d = param[0];
+    if (std::isnan(d_fixed)) d = param[0];
     else                d = d_fixed;
     
     cout << "sigma     = " << sigma/pow(T,0.5*d)
              			<< " " << unit << "/yr^" << 0.5*d << endl;   
-     
+    
+    //--- Add info to JSON file
+    json.write_double("sigma",sigma/pow(T,0.5*d));
+
+    //--- In the output write 1-phi because that's what stored 
     if (Nparam==0) {
       printf("d         = %8.4lf (fixed)\n",d_fixed);
       printf("kappa     = %8.4lf (fixed)\n",-2.0*d_fixed);
       printf("1-phi     = %le (fixed)\n",phi_fixed);
+      json.write_double("d",d_fixed);
+      json.write_double("kappa",-2.0*d_fixed);
+      json.write_double("1-phi",phi_fixed);
     } else if (Nparam==1) {
       printf("d         = %8.4lf +/- %6.4lf\n",param[0],error[0]);
       printf("kappa     = %8.4lf +/- %6.4lf\n",-2.0*param[0],2.0*error[0]);
       printf("1-phi     = %le (fixed)\n",phi_fixed);
+      json.write_double("d",param[0]);
+      json.write_double("kappa",-2.0*param[0]);
+      json.write_double("1-phi",phi_fixed);
     } else {
       printf("d         = %8.4lf +/- %6.4lf\n",param[0],error[0]);
       printf("kappa     = %8.4lf +/- %6.4lf\n",-2.0*param[0],2.0*error[0]);
       printf("1-phi     = %le +/- %le\n",param[1],error[1]);
+      json.write_double("d",param[0]);
+      json.write_double("kappa",-2.0*param[0]);
+      json.write_double("1-phi",param[1]);
     }
   }
 
@@ -271,48 +247,72 @@
   double GenGaussMarkov::compute_penalty(double *param)
 //-----------------------------------------------------
   {
-    double        penalty=0.0;
-    const double  LARGE=1.0e5;
+    double        penalty=0.0,d,phi,y;
+    const double  LARGE=1.0e5,safety_factor=2.0;
 
     using namespace std;
     if (Nparam==0) {
       penalty = 0.0;
     } else if (Nparam==1) {
       //--- d within limits, phi is fixed
-      if (param[0]>1.499) {
-        penalty += (param[0]-1.499)*LARGE;
-        param[0] = 1.499;
-      } else if (param[0]<-0.499) {
-        penalty += (-0.499-param[0])*LARGE;
-        param[0] = -0.499;
+      if (param[0]>1.5) {
+        penalty += (param[0]-1.5)*LARGE;
+        param[0] = 1.5;
+      //--- d (lower limit) If people want negative d, then I will hear it...
+      } else if (param[0]<0.01) {
+        penalty += (0.01-param[0])*LARGE;
+        param[0] = 0.01;
       }
     } else {
-      //--- phi
-      if (param[1]>0.9999) {
-        penalty += (param[1]-0.999)*LARGE;
-        param[1] = 0.9999;
-      } else if (param[1]<0.0) {
-        penalty += (0.0-param[1])*LARGE;
-        param[1] = 0.0;
+      d   = param[0];
+      phi = param[1];
+
+      //cout << "IN   d=" << d << ", 1-phi=" << phi << endl;
+
+      //--- 2F1 still explodes for large d and small 1-phi. Exclude this region
+      //    using a simple line in d & log10(1-phi) space.
+      //
+      //    f(d) = 4*d - 11   [ f(1)=-7,  f(2)=-3
+      //
+      if (phi>0.0)   y = log10(param[1]);
+      else           y = 9.9e99;        // will not be used
+
+      //--- Check if log(1-phi) is below the line (2F1 is too large)
+      if (y < 4.0*d - 11.0 + safety_factor) {
+        penalty += ((4.0*d-11.0+safety_factor) - y)*LARGE;
+        param[1] = pow(10,4.0*d-11.0+safety_factor);
+      //--- param[1] is always 1-phi. The following limit is rarely encountered
+      } else if (phi>0.999) {
+        penalty += (phi-0.999)*LARGE;
+        param[1] = 0.999;
+      //--- The following limit is most critical, stay away from zero!!
+      //    Another complication is that at phi=0, you have power-law and
+      //    then d_max=0.5. Thus, a jump down from 2. Allowing this is 
+      //    asking for trouble. I put lower limit to 1.0e-6.
+      } else if (phi<1.0e-6) {
+        penalty += (1.0e-6-phi)*LARGE;
+        param[1] = 1.0e-6;
+
+        //--- Now, check if 1-phi is still above the line
+        y = log10(param[1]);
+        if (y < 4.0*d - 11.0 + safety_factor) {
+          penalty += ((4.0*d-11.0 + safety_factor) - y)*LARGE;
+          param[1] = pow(10,4.0*d-11.0 + safety_factor);
+        }
       }
       //--- d (upper limit)
-      if (fabs(param[1])>0.01) {
-        if (param[0]>1.0e5) {
-          penalty += (param[0]-1.0e5)*LARGE;
-          param[0] = 1.0e5;
-        }
-      } else {
-        if (param[0]>1.499) {
-          penalty += (param[0]-1.499)*LARGE;
-          param[0] = 1.499;
-        }
+      if (d>1.5) {
+        penalty += (d-1.5)*LARGE;
+        param[0] = 1.5;
       }
-      //--- d (lower limit)
-      if (param[0]<-0.499) {
-        penalty += (-0.499-param[0])*LARGE;
-        param[0] = -0.499;
+      //--- d (lower limit) If people want negative d, then I will hear it...
+      if (d<0.01) {
+        penalty += (0.01-d)*LARGE;
+        param[0] = 0.01;
       }
     }
+    //cout << "OUT  d=" << param[0] << ", 1-phi=" << param[1] << endl << endl;
+
     return penalty;
   }
 
@@ -330,14 +330,18 @@
   {
     using namespace std;
     if (Nparam>=1) {
-      cout << "Enter parameter value of d: ";
-      cin >> d_fixed;
-      params_fixed[0] = d_fixed;
+      if (std::isnan(d_fixed)==true) {
+        cout << "Enter parameter value of d: ";
+        cin >> d_fixed;
+        params_fixed[0] = d_fixed;
+      }
     }
     if (Nparam==2) {
-      cout << "Enter parameter value of 1-phi: ";
-      cin >> phi_fixed;
-      params_fixed[1] = phi_fixed;
+      if (std::isnan(phi_fixed)==true) {
+        cout << "Enter parameter value of 1-phi: ";
+        cin >> phi_fixed;
+        params_fixed[1] = phi_fixed;
+      }
     }
   }
 

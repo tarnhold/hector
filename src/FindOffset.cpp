@@ -6,7 +6,7 @@
  *  2) Compute for each epoch the -2*log(L) - 2*log(f_s) - 2*log(f_theta)
  *  3) Save results to file and show lowest value on screen
  *
- *  This script is part of Hector 1.7.2
+ *  This script is part of Hector 1.9
  *
  *  Hector is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,6 +28,7 @@
   #include "DesignMatrix.h"
   #include "Likelihood.h"
   #include "Minimizer.h"
+  #include "JSON.h"
   #include <iostream>
   #include <iomanip>
   #include <ostream>
@@ -56,12 +57,13 @@
     //--- Start estimatetrend
     cout << endl
          << "************************************" << endl
-         << "    findoffset, version " << VERSION << "." << SUBVERSION<< endl
+         << "    findoffset, version " << VERSION << endl
          << "************************************" << endl;
 
     //--- Here the rest of the variable declarations occur
     fstream        fp;
     const double   TINY=1.0e-6;
+    JSON           &json = JSON::getInstance("findoffset.json");
     Minimizer      minimizer;
     Likelihood     &likelihood=Likelihood::getInstance();
     DesignMatrix   *designmatrix = DesignMatrix::getInstance();

@@ -3,7 +3,7 @@
  *
  * Header file for DesignMatrix.cpp
  *
- *  This script is part of Hector 1.7.2
+ *  This script is part of Hector 1.9
  *
  *  Hector is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -25,12 +25,9 @@
     #define __DESIGNMATRIX
     #include "Control.h"
     #include "Observations.h"
-    #include <gsl/gsl_sf.h>
-
-    extern "C" {
-      #include "cblas.h"
-      #include "clapack.h"
-    };
+    #include "JSON.h"
+    #include <boost/math/special_functions/hypergeometric_1F1.hpp>
+    #include "cblas.h"
 
     class DesignMatrix
     {

@@ -3,7 +3,7 @@
  *
  * This extremely simple noise model is convenient for testing.
  *
- *  This script is part of Hector 1.7.2
+ *  This script is part of Hector 1.9
  *
  *  Hector is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -72,9 +72,13 @@
   void White::show(double *param, double *error, double sigma)
 //------------------------------------------------------------
   {
+    JSON           &json = JSON::getInstance();
+
     using namespace std;
     cout << "sigma     = " << sigma << " " << unit << endl;
     cout << "No noise parameters to show" << endl;
+
+    json.write_double("sigma",sigma);
   }
 
 

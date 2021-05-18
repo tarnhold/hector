@@ -1,0 +1,178 @@
+# Makefile_common for the hector-1.9 programs
+#
+#  This script is part of Hector 1.9
+#
+#  Hector is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  any later version.
+#
+#  Hector is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with Hector.  If not, see <http://www.gnu.org/licenses/>
+#
+#===============================================================================
+
+#--- convenient group names
+likelihood_objects = Likelihood.o AmmarGrag.o FullCov.o MLEBase.o
+noisemodel_objects = White.o Powerlaw.o PowerlawApprox.o \
+        ARFIMA.o GenGaussMarkov.o Polynomial.o PolynomialRootFinder.o \
+        Matern.o VaryingPeriodic.o
+
+
+
+#--- Programs
+
+estimatetrend : EstimateTrend.cpp Control.o Minimizer.o NoiseModel.o \
+	$(noisemodel_objects) $(likelihood_objects) Observations.o \
+	DesignMatrix.o HyperGeo.o Calendar.o asa047.o JSON.o
+	$(CPP) $(CPPFLAGS) EstimateTrend.cpp Control.o Minimizer.o \
+	$(noisemodel_objects) $(likelihood_objects) Observations.o \
+	DesignMatrix.o HyperGeo.o Calendar.o asa047.o JSON.o NoiseModel.o \
+	 -DVERSION=$(VERSION) \
+	$(INC_DIR) $(OPENBLAS) $(FFTW) $(LIB_DIR) \
+	-o estimatetrend
+
+removeoutliers : RemoveOutliers.cpp RemoveOutliers.h \
+	Observations.o DesignMatrix.o Control.o Calendar.o JSON.o
+	$(CPP) $(CPPFLAGS) RemoveOutliers.cpp Observations.o DesignMatrix.o \
+	Control.o Calendar.o JSON.o -DVERSION=$(VERSION) \
+	$(INC_DIR) $(OPENBLAS) $(LIB_DIR) \
+	-o removeoutliers
+
+modelspectrum : ModelSpectrum.cpp ModelSpectrum.h NoiseModel.o \
+	$(noisemodel_objects) Control.o Observations.o HyperGeo.o Calendar.o \
+	$(likelihood_objects) DesignMatrix.o Spectrum.o JSON.o
+	$(CPP) $(CPPFLAGS) ModelSpectrum.cpp $(noisemodel_objects) \
+	$(likelihood_objects) DesignMatrix.o Spectrum.o JSON.o NoiseModel.o \
+        Control.o Observations.o HyperGeo.o Calendar.o -DVERSION=$(VERSION) \
+	$(INC_DIR) $(FFTW) $(OPENBLAS) $(LIB_DIR) \
+        -o modelspectrum
+
+estimatespectrum : EstimateSpectrum.cpp Observations.o Control.o \
+	Calendar.o Spectrum.o JSON.o
+	$(CPP) $(CPPFLAGS) EstimateSpectrum.cpp Observations.o Control.o \
+	Calendar.o Spectrum.o JSON.o -DVERSION=$(VERSION) \
+	$(INC_DIR) $(FFTW) $(LIB_DIR) \
+        -o estimatespectrum
+
+simulatenoise : SimulateNoise.cpp SimulateNoise.h $(noisemodel_objects) \
+	Control.o HyperGeo.o $(likelihood_objects) NoiseModel.o \
+	DesignMatrix.o Observations.o Calendar.o JSON.o
+	$(CPP) $(CPPFLAGS) SimulateNoise.cpp $(noisemodel_objects) \
+	$(likelihood_objects) DesignMatrix.o Observations.o Calendar.o \
+        Control.o HyperGeo.o JSON.o NoiseModel.o -DVERSION=$(VERSION) \
+        $(INC_DIR) $(FFTW) $(OPENBLAS) $(LIB_DIR) \
+        -o simulatenoise
+
+date2mjd : date2MJD.cpp Calendar.o
+	$(CPP) $(CPPFLAGS) $(LIB_DIR) date2MJD.cpp Calendar.o -o date2mjd
+
+mjd2date : MJD2date.cpp Calendar.o
+	$(CPP) $(CPPFLAGS) $(LIB_DIR) MJD2date.cpp Calendar.o -o mjd2date
+
+findoffset : FindOffset.cpp Control.o Minimizer.o NoiseModel.o \
+	$(noisemodel_objects) $(likelihood_objects) Observations.o \
+	DesignMatrix.o HyperGeo.o Calendar.o asa047.o JSON.o
+	$(CPP) $(CPPFLAGS) FindOffset.cpp Control.o Minimizer.o \
+	$(noisemodel_objects) $(likelihood_objects) Observations.o \
+	DesignMatrix.o HyperGeo.o Calendar.o asa047.o JSON.o NoiseModel.o \
+	 -DVERSION=$(VERSION) \
+	$(INC_DIR) $(OPENBLAS) $(FFTW) $(LIB_DIR) \
+	-o findoffset
+
+#---------- Subroutines
+
+MLE.o : MLE.cpp MLE.h
+	$(CPP) $(CPPFLAGS) -c MLE.cpp \
+        $(INC_DIR)
+
+Observations.o : Observations.cpp Observations.h Control.o Calendar.o JSON.o
+	$(CPP) $(CPPFLAGS) -c Observations.cpp 
+
+Control.o : Control.cpp Control.h
+	$(CPP) $(CPPFLAGS) -c Control.cpp
+
+NoiseModel.o : NoiseModel.cpp NoiseModel.h Control.o $(noisemodel_objects) \
+	JSON.o
+	$(CPP) $(CPPFLAGS) -c NoiseModel.cpp \
+        $(INC_DIR)
+
+Minimizer.o : Minimizer.cpp Minimizer.h Control.o $(noisemodel_objects) \
+	$(likelihood_objects) DesignMatrix.o asa047.o JSON.o
+	$(CPP) $(CPPFLAGS) -c Minimizer.cpp \
+        $(INC_DIR)
+
+Likelihood.o : Likelihood.cpp Likelihood.h Control.o DesignMatrix.o \
+	Observations.o MLEBase.o AmmarGrag.o FullCov.o
+	$(CPP) $(CPPFLAGS) -c Likelihood.cpp \
+        $(INC_DIR)
+
+MLEBase.o : MLEBase.cpp MLEBase.h Control.o DesignMatrix.o \
+	Observations.o 
+	$(CPP) $(CPPFLAGS) -c MLEBase.cpp \
+        $(INC_DIR)
+
+DesignMatrix.o : DesignMatrix.cpp DesignMatrix.h Control.o Observations.o \
+	Calendar.o JSON.o
+	$(CPP) $(CPPFLAGS) -c DesignMatrix.cpp \
+        $(INC_DIR)
+
+White.o : White.cpp White.h NoiseModelBaseClass.h JSON.o
+	$(CPP) $(CPPFLAGS) -c White.cpp
+
+AmmarGrag.o : AmmarGrag.cpp AmmarGrag.h NoiseModel.o MLEBase.o
+	$(CPP) $(CPPFLAGS) -c AmmarGrag.cpp \
+        $(INC_DIR)
+
+FullCov.o : FullCov.cpp FullCov.h MLEBase.o NoiseModel.o
+	$(CPP) $(CPPFLAGS) -c FullCov.cpp \
+        $(INC_DIR)
+
+Powerlaw.o : Powerlaw.cpp Powerlaw.h NoiseModelBaseClass.h JSON.o
+	$(CPP) $(CPPFLAGS) -c Powerlaw.cpp
+
+PowerlawApprox.o : PowerlawApprox.cpp PowerlawApprox.h JSON.o \
+	NoiseModelBaseClass.h
+	$(CPP) $(CPPFLAGS) -c PowerlawApprox.cpp \
+        $(INC_DIR)
+
+ARFIMA.o : ARFIMA.cpp ARFIMA.h HyperGeo.o NoiseModelBaseClass.h \
+	JSON.o
+	$(CPP) $(CPPFLAGS) -c ARFIMA.cpp \
+        $(INC_DIR)
+
+GenGaussMarkov.o : GenGaussMarkov.cpp GenGaussMarkov.h JSON.o\
+	NoiseModelBaseClass.h
+	$(CPP) $(CPPFLAGS) -c GenGaussMarkov.cpp 
+
+HyperGeo.o : HyperGeo.cpp HyperGeo.h 
+	$(CPP) $(CPPFLAGS) -c HyperGeo.cpp $(INC_DIR)
+
+Calendar.o : Calendar.cpp Calendar.h
+	$(CPP) $(CPPFLAGS) -c Calendar.cpp
+
+Spectrum.o : Spectrum.cpp Spectrum.h
+	$(CPP) $(CPPFLAGS) -c Spectrum.cpp $(INC_DIR)
+
+Polynomial.o : Polynomial.cpp Polynomial.h
+	$(CPP) $(CPPFLAGS) -c Polynomial.cpp 
+
+PolynomialRootFinder.o : PolynomialRootFinder.cpp PolynomialRootFinder.h
+	$(CPP) $(CPPFLAGS) -c PolynomialRootFinder.cpp 
+
+asa047.o: asa047.cpp asa047.hpp 
+	$(CPP) $(CPPFLAGS) -c asa047.cpp
+
+Matern.o : Matern.cpp Matern.h Control.o Observations.o JSON.o
+	$(CPP) $(CPPFLAGS) -c Matern.cpp $(INC_DIR)
+
+VaryingPeriodic.o : VaryingPeriodic.cpp VaryingPeriodic.h Control.o 
+	$(CPP) $(CPPFLAGS) -c VaryingPeriodic.cpp $(INC_DIR)
+
+JSON.o : JSON.cpp JSON.h Control.o
+	$(CPP) $(CPPFLAGS) -c JSON.cpp

@@ -5,7 +5,7 @@
  * part, using the standard method of using the full covariance matrix and
  * afterwards eliminating all the rows and columns for the missing data.
  *
- *  This script is part of Hector 1.7.2
+ *  This script is part of Hector 1.9
  *
  *  Hector is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -75,7 +75,7 @@
     //    MLEBase class.
     j=0;
     for (i=0;i<m;i++) {
-      if (!isnan(x[i])) {
+      if (!std::isnan(x[i])) {
         dummyx[j] = x[i];
         dummyt[j] = t[i];
         cblas_dcopy(n,&H[i],m,&dummyH[j],N);
@@ -120,7 +120,8 @@
 //-------------------------------------------------
   {
     NoiseModel  &noisemodel=NoiseModel::getInstance();
-    int         i,i0,i1,j0,j1;
+    int         i,i0,i1,j0,j1,info,one=1; 
+    char        Trans='T',Up='U';
     int         j,*ipiv;
     double      product,lambda,lambda_min,lambda_max;
 
@@ -133,10 +134,10 @@
 
     i1=0;
     for (i0=0;i0<m;i0++) {
-      if (!isnan(x[i0])) {
+      if (!std::isnan(x[i0])) {
         j1=0;
         for (j0=0;j0<m-i0;j0++) {
-          if (!isnan(x[i0+j0])) {
+          if (!std::isnan(x[i0+j0])) {
             if (i1>=N || j1>=N || (i1+(i1+j1)*N)>=N*N) {
               cerr << "Oops, i1=" << i1 << ", j1=" << j1 << endl;
               exit(EXIT_FAILURE);
@@ -158,7 +159,7 @@
 
     //--- Perform Cholesky decomposition, compute determinant and compute
     //    matrix A and vector y.
-    clapack_dpotrf(CblasColMajor,CblasUpper,N,C,N);
+    dpotrf_(&Up,&N,C,&N,&info);
 
     //--- Compute logaritm of determinant which is a MLEBase-class variable
     ln_det_C = 0.0;
@@ -172,11 +173,11 @@
 
     //--- Create pivots
     ipiv = new int[N];
-    for (i=0;i<N;i++) ipiv[i]=i;
+    for (i=0;i<N;i++) ipiv[i]=i+1;
 
     //--- Cholesky decomposition is stored in matrix C
-    clapack_dgetrs(CblasColMajor,CblasTrans,N,n,C,N,ipiv,A,N);
-    clapack_dgetrs(CblasColMajor,CblasTrans,N,1,C,N,ipiv,y,N);
+    dgetrs_(&Trans,&N,&n,C,&N,ipiv,A,&N,&info);
+    dgetrs_(&Trans,&N,&one,C,&N,ipiv,y,&N,&info);
 #ifdef DEBUG
     show_matrix("A",A,N,n);
     show_matrix("y",y,N,1);
@@ -187,7 +188,7 @@
 
     //--- Simulate dgels using ATLAS subroutines (ordinary least-squares)
     cblas_dsyrk(CblasColMajor,CblasUpper,CblasTrans,n,N,1.0,A,N,0.0,C_theta,n);
-    clapack_dpotrf(CblasColMajor,CblasUpper,n,C_theta,n);
+    dpotrf_(&Up,&n,C_theta,&n,&info);
 
     //--- Compute ln_det_I (The logarithm of the determinant of the
     //    Fisher Information matrix). det(C^{-1}) = 1/det(C)
@@ -197,7 +198,7 @@
       ln_det_I += 2.0*log(C_theta[i+i*n]);
     }
 
-    clapack_dpotri(CblasColMajor,CblasUpper,n,C_theta,n);
+    dpotri_(&Up,&n,C_theta,&n,&info);
     cblas_dgemv(CblasColMajor,CblasTrans,N,n,1.0,A,N,y,1,0.0,dummy,1);
     cblas_dsymv(CblasColMajor,CblasUpper,n,1.0,C_theta,n,dummy,1,0.0,theta,1);
 #ifdef DEBUG

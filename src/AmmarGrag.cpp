@@ -11,7 +11,7 @@
  *  Ammar GS, Gragg WB (1988) Superfast solution of real positive definite 
  *  Toeplitz systems. SIAM J Matrix Anal Appl, 9:61–76.
  *
- *  This script is part of Hector 1.7.2
+ *  This script is part of Hector 1.9
  *
  *  Hector is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -72,7 +72,7 @@
     //    to have zero entries on the rows when there is a gap.
     if (Ngaps>0) {
       for (i=0;i<m;i++) {
-        if (isnan(x[i])) {
+        if (std::isnan(x[i])) {
           x[i] = 0.0;
           cblas_dscal(n,0.0,&H[i],m);
         }
@@ -206,8 +206,8 @@
   double AmmarGrag::step1(double *gamma_x, double **l1, double **l2)
 //-------------------------------------------------------------------
   {
-    int      i,j,Status;
-    double   delta,ln_determinant_C,*dummy=NULL,gamma;
+    int          i,j,Status;
+    double       ln_determinant_C,*dummy=NULL,delta,gamma;
  
     using namespace std;
     //--- use r1 and r2 as working arrays (Note that [m..2m-1] is the
@@ -234,6 +234,24 @@
       }
       (*l2)[1] = gamma;
       delta = gamma_x[0] + cblas_ddot(i+1,&gamma_x[1],1,&(*l2)[1],-1);
+      if (std::isnan(delta) or fabs(delta)<1.0e-50) {
+        cout << "Matrix does not appear to be positive definite..." << endl;
+
+        cout << endl << "If you are using the GGM noise model, then read" <<
+               " section 7.5 and 7.6 of the manual." << endl <<
+               "You should increase the value of GGM_1mphi" << endl; 
+
+        if (std::isnan(delta)==true) {
+          cout << "Delta is NaN" << endl;
+        } else {
+          cout << "Delta is :" << delta << endl;
+        }
+        for (j=0;j<10;j++) {
+          cout << "i=" << i << ", j=" << j << ", gamma_x=" << gamma_x[j] << 
+		", l1=" << (*l1)[j] <<  ", l2=" << (*l2)[j] << endl;
+        }
+        exit(EXIT_FAILURE);
+      }
       ln_determinant_C += log(delta);
     }
 
@@ -321,7 +339,8 @@
 //---------------------------------------------------
   {
     NoiseModel   &noisemodel=NoiseModel::getInstance();
-    int          i,j,*ipiv,k;
+    int          i,j,*ipiv,k,info,one=1;
+    char         Trans='T',Up='U';
     double       product,ms;
     clock_t      start,end,start2,end2;
 
@@ -330,7 +349,7 @@
     k = n;
     if (Ngaps>n) k=Ngaps;
     ipiv = new int[k];
-    for (i=0;i<k;i++) ipiv[i]=i;
+    for (i=0;i<k;i++) ipiv[i]=i+1;
 
     //--- Create the 1st column of the Covariance matrix. Since this is
     //    a Toeplitz matrix, this column vector is sufficient.
@@ -380,7 +399,7 @@
       cblas_daxpy(Ngaps*Ngaps,-1.0,M2,1,M,1);
 
       //--- Perform Cholesky decomposition of M
-      clapack_dpotrf(CblasColMajor,CblasUpper,Ngaps,M,Ngaps);
+      dpotrf_(&Up,&Ngaps,M,&Ngaps,&info);
 
       //--- Adjust ln_det_C which is a MLEBase-class variable
       for (i=0;i<Ngaps;i++) {
@@ -392,14 +411,14 @@
 					Ngaps,n,m,1.0,G2,m,A2,m, 0.0,QA,Ngaps);
       cblas_dgemm(CblasColMajor,CblasTrans,CblasNoTrans,
 					Ngaps,n,m,1.0,G1,m,A1,m,-1.0,QA,Ngaps);
-      clapack_dgetrs(CblasColMajor,CblasTrans,Ngaps,n,M,Ngaps,ipiv,QA,Ngaps);
+      dgetrs_(&Trans,&Ngaps,&n,M,&Ngaps,ipiv,QA,&Ngaps,&info);
 
       //--- Solve M'*Q_y=G1'*y1 - G2'*y2
       cblas_dgemm(CblasColMajor,CblasTrans,CblasNoTrans,
 					Ngaps,1,m,1.0,G2,m,y2,m, 0.0,Qy,Ngaps);
       cblas_dgemm(CblasColMajor,CblasTrans,CblasNoTrans,
 					Ngaps,1,m,1.0,G1,m,y1,m,-1.0,Qy,Ngaps);
-      clapack_dgetrs(CblasColMajor,CblasTrans,Ngaps,1,M,Ngaps,ipiv,Qy,Ngaps);
+      dgetrs_(&Trans,&Ngaps,&one,M,&Ngaps,ipiv,Qy,&Ngaps,&info);
 
       //--- Adjust C_thetaInv with -QA'*QA
       cblas_dsyrk(CblasColMajor,CblasUpper,CblasTrans,
@@ -411,7 +430,7 @@
 
     //--- Now compute inv(A1'*A1 - A2'*A2 - [QA'*QA])
     cblas_dcopy(n*n,C_thetaInv,1,C_theta,1);
-    clapack_dpotrf(CblasColMajor,CblasUpper,n,C_theta,n);
+    dpotrf_(&Up,&n,C_theta,&n,&info);
 
     //--- Compute ln_det_I (The logarithm of the determinant of the
     //    Fisher Information matrix). det(C_theta^{-1}) = 1/det(C_theta)
@@ -422,7 +441,7 @@
     }
       
     //--- Now we can compute inverse of C_theta.  
-    clapack_dpotri(CblasColMajor,CblasUpper,n,C_theta,n);
+    dpotri_(&Up,&n,C_theta,&n,&info);
 
     //--- Perform Least-Squares
     cblas_dsymv(CblasColMajor,CblasUpper,n,1.0,C_theta,n,dummy,1,0.0,theta,1);
@@ -442,7 +461,7 @@
 					Ngaps,1,m,1.0,G2,m,t2,m, 0.0,Qt,Ngaps);
       cblas_dgemm(CblasColMajor,CblasTrans,CblasNoTrans,
 					Ngaps,1,m,1.0,G1,m,t1,m,-1.0,Qt,Ngaps);
-      clapack_dgetrs(CblasColMajor,CblasTrans,Ngaps,1,M,Ngaps,ipiv,Qt,Ngaps);
+      dgetrs_(&Trans,&Ngaps,&one,M,&Ngaps,ipiv,Qt,&Ngaps,&info);
       product -= cblas_ddot(Ngaps,Qt,1,Qt,1);
     }
 
@@ -473,6 +492,8 @@
     vector< vector<double> >   off_omp;
     NoiseModel      &noisemodel=NoiseModel::getInstance();
     int             i,j,l,column,ny,nyc,*ipiv,k,n_offsets,offset_index,N;
+    int             one=1,info;
+    char            Trans='T',Up='U';
     double          product,ms,time0,time1,lnf_s,lnf_theta;
     clock_t         start,end,start2,end2;
     bool            already_used;
@@ -543,7 +564,7 @@
     k = n;
     if (Ngaps>n) k=Ngaps;
     ipiv = new int[k];
-    for (i=0;i<k;i++) ipiv[i]=i;
+    for (i=0;i<k;i++) ipiv[i]=i+1;
 
 
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -573,7 +594,7 @@
           already_used=true;
         } 
       } 
-      if (isnan(x_ori[i]) || already_used==true) {
+      if (std::isnan(x_ori[i]) || already_used==true) {
         BIC_c[i] = LARGE;
       } else {
 
@@ -610,8 +631,8 @@
           cblas_dgemm(CblasColMajor,CblasTrans,CblasNoTrans,
 		      Ngaps,1,m,1.0,G1,m,&A1_omp[l*m*n+column*m],m,-1.0,
 				        &QA_omp[l*Ngaps*n+column*Ngaps],Ngaps);
-          clapack_dgetrs(CblasColMajor,CblasTrans,Ngaps,1,M,Ngaps,ipiv,
-				        &QA_omp[l*Ngaps*n+column*Ngaps],Ngaps);
+          dgetrs_(&Trans,&Ngaps,&one,M,&Ngaps,ipiv,
+			        &QA_omp[l*Ngaps*n+column*Ngaps],&Ngaps,&info);
           //--- Adjust last column of C_thetaInv and z
           cblas_dgemm(CblasColMajor,CblasTrans,CblasNoTrans,n,1,Ngaps,-1.0,
 	          &QA_omp[l*Ngaps*n],Ngaps,&QA_omp[l*Ngaps*n+column*Ngaps],
@@ -622,7 +643,7 @@
 
         //--- Compute C_theta
         cblas_dcopy(n*n,&C_thetaInv_omp[l*n*n],1,&C_theta_omp[l*n*n],1);
-        clapack_dpotrf(CblasColMajor,CblasUpper,n,&C_theta_omp[l*n*n],n);
+        dpotrf_(&Up,&n,&C_theta_omp[l*n*n],&n,&info);
 			
         //--- Compute ln_det_I (The logarithm of the determinant of the
         //    Fisher Information matrix). det(C_theta^{-1}) = 1/det(C_theta)
@@ -633,7 +654,7 @@
         }
 
         //--- Now inverse C_theta
-        clapack_dpotri(CblasColMajor,CblasUpper,n,&C_theta_omp[l*n*n],n);
+        dpotri_(&Up,&n,&C_theta_omp[l*n*n],&n,&info);
       
         //--- Perform Least-Squares
         cblas_dsymv(CblasColMajor,CblasUpper,n,1.0,&C_theta_omp[l*n*n],n,
@@ -657,8 +678,8 @@
 			      G2,m,&t2_omp[l*m],m, 0.0,&Qt_omp[l*Ngaps],Ngaps);
           cblas_dgemm(CblasColMajor,CblasTrans,CblasNoTrans,Ngaps,1,m,1.0,
 			      G1,m,&t1_omp[l*m],m,-1.0,&Qt_omp[l*Ngaps],Ngaps);
-          clapack_dgetrs(CblasColMajor,CblasTrans,Ngaps,1,M,Ngaps,ipiv,
-						       &Qt_omp[l*Ngaps],Ngaps);
+          dgetrs_(&Trans,&Ngaps,&one,M,&Ngaps,ipiv,
+					       &Qt_omp[l*Ngaps],&Ngaps,&info);
           product -= cblas_ddot(Ngaps,&Qt_omp[l*Ngaps],1,&Qt_omp[l*Ngaps],1);
         }
 
@@ -678,7 +699,7 @@
         //    move this section of code outside the loop over i to avoid 
         //    computing the same thing over and over but I've kept it here
         //    to keep the code readable.
-        if (!isnan(beta_spacing)) {
+        if (!std::isnan(beta_spacing)) {
           fact_k = 1.0;
           for (j=1;j<=n_offsets;j++) fact_k *= j;
           lnf_s = log(pow(lambda,n_offsets)*exp(-lambda)/fact_k);
@@ -686,7 +707,7 @@
 
         //--- Size of offsets follows exponential distribution
         lnf_theta = 0.0;
-        if (!isnan(beta_size)) {
+        if (!std::isnan(beta_size)) {
           //--- prior for size of offsets     
           for (j=0;j<n_offsets;j++) {
             lnf_theta += -fabs(theta_omp[l*n+offset_index+j])/beta_size;

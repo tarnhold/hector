@@ -5,7 +5,7 @@
  * This program removes outliers using data snooping and throwing everything 
  * away that falls outside 3 (set by IQ_factor) times the quartile range.
  *
- *  This script is part of Hector 1.7.2
+ *  This script is part of Hector 1.9
  *
  *  Hector is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,7 +20,8 @@
  *  You should have received a copy of the GNU General Public License
  *  along with Hector. If not, see <http://www.gnu.org/licenses/>
  *
- * \date 6/7/2012  Santa Clara
+ * \date  6/7/2012  Santa Clara
+ * \date 13/4/2020  Santa Clara (JSON)
  */
 //==============================================================================
   #include <cstdlib>
@@ -63,7 +64,8 @@
   {
     Observations   &observations=Observations::getInstance();
     DesignMatrix   *designmatrix=NULL;
-    int            i,j,n;
+    int            i,j,n,one=1,info; 
+    char           Up='U';
     const double   TINY=1.0e-6;
     double         *x,*H,*theta,*Ctheta;
     FILE           *fp;
@@ -100,9 +102,9 @@
     Ctheta = new double[n*n];
     memset(Ctheta,0,(n*n)*sizeof(double)); // put Ctheta to zero
     cblas_dsyrk(CblasColMajor,CblasUpper,CblasTrans,n,m,1.0,H,m,0.0,Ctheta,n);
-    clapack_dpotrf(CblasColMajor,CblasUpper,n,Ctheta,n);
+    dpotrf_(&Up,&n,Ctheta,&n,&info);
     cblas_dgemv(CblasColMajor,CblasTrans,m,n,1.0,H,m,x,1,0.0,theta,1); 
-    clapack_dpotrs(CblasColMajor,CblasUpper,n,1,Ctheta,n,theta,n); 
+    dpotrs_(&Up,&n,&one,Ctheta,&n,theta,&n,&info); 
 
     //--- Compute r = xhat - x (matrix dummy contains original A matrix)
     cblas_dgemm(CblasColMajor,CblasNoTrans,CblasNoTrans,
@@ -140,7 +142,7 @@
 //------------------------------------------------------------
   {
     using namespace std;
-    if (isnan(*(double*)a) || isnan(*(double*)b)) {
+    if (std::isnan(*(double*)a) || std::isnan(*(double*)b)) {
       cerr << "Something wrong here!" << endl;
       exit(EXIT_FAILURE);
     } else { 
@@ -161,8 +163,12 @@
     Observations   &observations=Observations::getInstance();
     int            m,bad_points,i,j;
     vector<double> q;
+    vector<string> outlier_lst;
+    string         date;
     double         *r,interquartile,median,lower_boundary,upper_boundary,*t;
     FILE           *fp;
+    Calendar       calendar;
+    JSON           &json=JSON::getInstance();
 
     //--- Save time of outliers
     fp = fopen("outliers.out","w");
@@ -193,6 +199,10 @@
           observations.set_one_x(i,NaN);
           fprintf(fp,"%f\n",t[i]);
           bad_points++;
+
+          //--- Add to JSON outlier list
+          calendar.MJD_to_ISO8601(t[i],date);
+          outlier_lst.push_back(date);
         }
       }
       cout << "Found " << bad_points << " bad points." << endl;
@@ -203,6 +213,9 @@
       q.clear();
     
     } while (bad_points>0);
+
+    //--- Write outlier list to JSON file
+    json.write_chararray_list("outliers",outlier_lst,true);
 
     //--- Close file with time of outliers
     fclose(fp);
@@ -229,11 +242,11 @@
 
     cout << endl
          << "**************************************" << endl
-         << "    removeoutliers, version " << VERSION 
-         << "." << SUBVERSION << endl
+         << "    removeoutliers, version " << VERSION << endl
          << "**************************************" << endl;
 
     //--- Now it's safe to call the other classes
+    JSON            &json = JSON::getInstance("removeoutliers.json");
     RemoveOutliers  outliers;
     Observations    &observations=Observations::getInstance();
 

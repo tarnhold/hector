@@ -3,7 +3,7 @@
  *
  * Implementation of the Hosking (1984) method.
  *
- *  This script is part of Hector 1.7.2
+ *  This script is part of Hector 1.9
  *
  *  Hector is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -138,7 +138,6 @@
     cout << endl
          << "************************************" << endl
          << "    simulatenoise, version " << VERSION << endl 
-         << "." << SUBVERSION
          << "************************************" << endl;
 
     //--- Now it's save to initiate the SimulateNoise class
